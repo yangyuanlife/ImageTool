@@ -18,27 +18,27 @@
 ## 🖼️ 界面预览
 
 <p align="center">
-  <img src="ReadMeAssets/pic1.png" width="720" alt="调整大小"/>
+  <img src="ReadMeAssets/pic1.png" width="720" alt="调整大小"/><br>
   <em>主界面 · 调整大小</em>
 </p>
 
 <p align="center">
-  <img src="ReadMeAssets/pic2.png" width="720" alt="格式转换 PNG"/>
+  <img src="ReadMeAssets/pic2.png" width="720" alt="格式转换 PNG"/><br>
   <em>主界面 · 格式转换（PNG）</em>
 </p>
 
 <p align="center">
-  <img src="ReadMeAssets/pic3.png" width="720" alt="格式转换 ICO"/>
+  <img src="ReadMeAssets/pic3.png" width="720" alt="格式转换 ICO"/><br>
   <em>主界面 · 格式转换（ICO 多尺寸导出）</em>
 </p>
 
 <p align="center">
-  <img src="ReadMeAssets/pic4.png" width="720" alt="智能压缩"/>
+  <img src="ReadMeAssets/pic4.png" width="720" alt="智能压缩"/><br>
   <em>主界面 · 智能压缩</em>
 </p>
 
 <p align="center">
-  <img src="ReadMeAssets/pic5.png" width="720" alt="截图编辑器"/>
+  <img src="ReadMeAssets/pic5.png" width="720" alt="截图编辑器"/><br>
   <em>截图编辑器 · 标注工具栏</em>
 </p>
 
