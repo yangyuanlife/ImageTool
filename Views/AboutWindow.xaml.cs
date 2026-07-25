@@ -31,6 +31,4 @@ public partial class AboutWindow : Window
         }
         e.Handled = true;
     }
-
-    private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
 }

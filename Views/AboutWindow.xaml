@@ -75,15 +75,11 @@
                     </TextBlock>
                 </StackPanel>
 
-                <!-- 底部：版权 + 关闭 -->
+                <!-- 底部版权（关闭用窗口标题栏按钮即可） -->
                 <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,18,0,14"/>
-                <Grid>
-                    <TextBlock Text="{Binding Copyright, RelativeSource={RelativeSource AncestorType=Window}}"
-                               FontSize="11" Foreground="{StaticResource MutedBrush}"
-                               VerticalAlignment="Center"/>
-                    <Button Content="关闭" Style="{StaticResource PrimaryButton}" Width="96"
-                            HorizontalAlignment="Right" Padding="0,9" Click="CloseButton_Click"/>
-                </Grid>
+                <TextBlock Text="{Binding Copyright, RelativeSource={RelativeSource AncestorType=Window}}"
+                           FontSize="11" Foreground="{StaticResource MutedBrush}"
+                           HorizontalAlignment="Center"/>
             </StackPanel>
         </Border>
     </Grid>
