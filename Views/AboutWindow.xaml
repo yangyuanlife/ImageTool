@@ -5,7 +5,6 @@
         Title="关于 ImageTool" Height="520" Width="460"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
         WindowStyle="SingleBorderWindow" ShowInTaskbar="False"
-        Icon="pack://siteoforigin:,,,/Assets/app.ico"
         Background="{StaticResource ContentBgBrush}"
         FontFamily="Segoe UI, Microsoft YaHei, sans-serif"
         UseLayoutRounding="True" SnapsToDevicePixels="True">
