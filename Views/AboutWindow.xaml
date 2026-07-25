@@ -16,7 +16,7 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,4">
                     <Border Width="64" Height="64" CornerRadius="16" Background="{StaticResource SidebarBrush}"
                             Margin="0,0,16,0">
-                        <Image Source="pack://siteoforigin:,,,/Assets/app_icon_1024.png" Width="56" Height="56"
+                        <Image Source="pack://application:,,,/ImageTool;component/Assets/app_icon_1024.png" Width="56" Height="56"
                                RenderOptions.BitmapScalingMode="HighQuality" UseLayoutRounding="True"/>
                     </Border>
                     <StackPanel VerticalAlignment="Center">

@@ -17,7 +17,7 @@
         <Border Grid.Column="0" Background="{StaticResource SidebarBrush}">
             <DockPanel LastChildFill="True">
                 <StackPanel DockPanel.Dock="Top" Margin="22,24,18,20" HorizontalAlignment="Center">
-                    <Image Source="pack://siteoforigin:,,,/Assets/app_icon_1024.png" Width="164" Height="164" Margin="0,0,0,12"
+                    <Image Source="pack://application:,,,/ImageTool;component/Assets/app_icon_1024.png" Width="164" Height="164" Margin="0,0,0,12"
                            HorizontalAlignment="Center"
                            RenderOptions.BitmapScalingMode="HighQuality"
                            UseLayoutRounding="True"/>

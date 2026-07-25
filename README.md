@@ -160,7 +160,7 @@ App (启动 → 托盘 / 全局热键 / 截图流程编排)
 ImageTool/
 ├── App.xaml(.cs)               # 启动、全局热键、托盘、截图编排
 ├── MainWindow.xaml(.cs)        # 主窗口（侧边栏导航 + 内容区）
-├── Assets/                     # 图标资源（app.ico / app_icon_512.png / app_icon_1024.png）
+├── Assets/                     # 源图标资源（app.ico 由 <ApplicationIcon> 嵌入 exe；app_icon_1024.png 作为 WPF 资源嵌入程序集，发布后无需随附文件夹）
 ├── ReadMeAssets/               # README 展示截图
 ├── Converters/                 # 值转换器（BoolToOpacity / BoolToVisibility / ProgressWidth …）
 ├── Models/                     # 数据模型与枚举（ResizeMode 等）

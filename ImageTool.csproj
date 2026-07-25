@@ -21,16 +21,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Assets\app.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <!-- 高清 PNG 用于界面展示（侧边栏 logo），与 app.ico 同源，保证观感一致 -->
-    <Content Include="Assets\app_icon_512.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\app_icon_1024.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <!-- 界面 logo：作为 WPF 资源嵌入程序集（Build Action = Resource），
+         单文件发布后随 exe 一并打包，无需附带 Assets 文件夹，真正实现「单文件」。
+         app.ico 由上方 <ApplicationIcon> 作为 Win32 资源嵌入 exe（Win32 图标），
+         托盘图标经 Icon.ExtractAssociatedIcon 从 exe 读取，二者均无需松散文件。 -->
+    <Resource Include="Assets\app_icon_1024.png" />
   </ItemGroup>
 
 </Project>
