@@ -87,7 +87,6 @@ public partial class ScreenshotEditorWindow : Window
     private TextBox? _textDrag;       // 正在拖动的文字框
     private Point _textDragStart;     // 拖动起点（图像空间）
     private Point _textDragOrigin;    // 文字框原始位置
-    private bool _textDragMoved;      // 本次拖动是否发生位移（用于区分"点击编辑"与"拖动"）
     private TextBox? _editingText;    // 当前正在编辑（已聚焦）的文字框
 
     // 箭头临时引用（整条箭头是一个实心多边形）
@@ -515,7 +514,6 @@ public partial class ScreenshotEditorWindow : Window
             _textDrag = tb;
             _textDragStart = tp;
             _textDragOrigin = new Point(Canvas.GetLeft(tb), Canvas.GetTop(tb));
-            _textDragMoved = false;
             Overlay.CaptureMouse();
             return;
         }
@@ -640,7 +638,6 @@ public partial class ScreenshotEditorWindow : Window
             double ny = _textDragOrigin.Y + (tp.Y - _textDragStart.Y);
             Canvas.SetLeft(_textDrag, nx);
             Canvas.SetTop(_textDrag, ny);
-            _textDragMoved = true;
             return;
         }
 
@@ -684,14 +681,13 @@ public partial class ScreenshotEditorWindow : Window
 
     private void Overlay_MouseUp(object sender, MouseButtonEventArgs e)
     {
-        // 结束文字拖动：未发生位移则视为点击 -> 进入编辑
+        // 结束文字拖动：
+        //  - 拖动过 -> 位置已更新，留在放置态（可再次拖动 / 双击编辑）
+        //  - 单击未移动 -> 也留在放置态（不再自动进编辑，避免"单击即编辑"）
         if (_textDrag != null)
         {
-            var tb = _textDrag;
             _textDrag = null;
             Overlay.ReleaseMouseCapture();
-            if (!_textDragMoved)
-                BeginEditText(tb);
             return;
         }
 
@@ -789,10 +785,13 @@ public partial class ScreenshotEditorWindow : Window
         return null;
     }
 
-    // 进入文字编辑：聚焦文本框（在输入事件处理完后再聚焦，避免被 WPF 撤销）
+    // 进入文字编辑：先恢复可聚焦 + IBeam 光标，再聚焦文本框
+    //（在输入事件处理完后再聚焦，避免被 WPF 撤销）
     private void BeginEditText(TextBox tb)
     {
         _editingText = tb;
+        tb.Focusable = true;
+        tb.Cursor = System.Windows.Input.Cursors.IBeam;
         tb.Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => tb.Focus()));
     }
 
@@ -969,6 +968,10 @@ public partial class ScreenshotEditorWindow : Window
         // 保持为可移动 / 可再编辑的 TextBox（不再烧录成 TextBlock）；边框转透明（已放置态）
         tb.BorderBrush = Brushes.Transparent;
         tb.BorderThickness = new Thickness(1);
+        // 已放置态：禁用键盘焦点 —— 否则点它会立刻被 WPF 自动聚焦进入编辑，
+        // 导致单击无法走拖动逻辑（表现为「单击直接进编辑、拖不动」）。
+        tb.Focusable = false;
+        tb.Cursor = System.Windows.Input.Cursors.SizeAll;   // 提示可拖动
         _editingText = null;
         if (!_annotations.Contains(tb))
         {
