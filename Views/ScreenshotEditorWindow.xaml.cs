@@ -492,6 +492,10 @@ public partial class ScreenshotEditorWindow : Window
     private void Overlay_MouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Left) return;
+
+        // 点到已有文字输入框：交给它自己处理（定位光标 / 选中文字），不要新建、也不要抢走焦点
+        if (IsOnExistingTextBox(e.OriginalSource)) return;
+
         var pos = e.GetPosition(Overlay);
         _start = pos;
 
@@ -726,6 +730,19 @@ public partial class ScreenshotEditorWindow : Window
 
     private static double Clamp(double v, double min, double max) => v < min ? min : v > max ? max : v;
 
+    // 判断点击是否落在某个已存在的文字输入框（或其内部视觉子元素）上；
+    // 若是，则不应再新建文字框，而应让该文本框自行处理（定位光标 / 选中）。
+    private static bool IsOnExistingTextBox(object? originalSource)
+    {
+        var d = originalSource as DependencyObject;
+        while (d != null)
+        {
+            if (d is TextBox) return true;
+            d = VisualTreeHelper.GetParent(d);
+        }
+        return false;
+    }
+
     // ---- 锥形实心箭头：尾部尖(宽≈1) → 杆逐渐变粗 → 大三角头 ----
 
     private void UpdateArrow(Point tip)
@@ -862,7 +879,10 @@ public partial class ScreenshotEditorWindow : Window
         Canvas.SetLeft(tb, p.X);
         Canvas.SetTop(tb, p.Y);
         Overlay.Children.Add(tb);
-        tb.Focus();
+        // 关键：在 MouseDown 处理中直接 Focus() 会被 WPF 在本次输入事件结束时撤销，
+        // 导致光标进不去、无法输入（表现为「点击没反应」）。改用 Dispatcher 在输入事件
+        // 处理完之后再聚焦，确保文本框拿到键盘焦点、可以正常打字。
+        tb.Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => tb.Focus()));
         tb.LostKeyboardFocus += (_, _) => CommitText(tb);
         tb.KeyDown += (_, ev) =>
         {

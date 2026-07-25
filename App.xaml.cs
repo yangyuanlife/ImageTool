@@ -90,18 +90,26 @@ public partial class App : System.Windows.Application
     {
         if (MainWindow is { IsVisible: true })
         {
-            // 确定性修复（不再依赖 DWM 时序）：直接把主窗口移动到虚拟屏幕之外
-            // （坐标 (-100000,-100000) 远在任何显示器之外）。CopyFromScreen 只复制虚拟屏幕矩形，
-            // 窗口不在该矩形内，因此无论 DWM 何时重绘都不可能被截进去——从根上杜绝半透明主窗口残留。
-            // 之后正式 Hide() 并还原坐标，避免下次 Show 时窗口跑到屏幕外看不见。
             var left = MainWindow.Left;
             var top = MainWindow.Top;
-            MainWindow.Left = -100000;
-            MainWindow.Top = -100000;
-            await Task.Delay(30);
+            var state = MainWindow.WindowState;
+            // 最大化时 Left/Top 不生效，先恢复正常窗口再移动
+            if (state == WindowState.Maximized)
+                MainWindow.WindowState = WindowState.Normal;
+
+            // 移到虚拟屏幕之外：用 VirtualScreen 边界 + 偏移，确保落在「真正空的区域」。
+            // 注意：不要用 (-100000,-100000) 这类极端坐标——窗口管理器会把超范围坐标
+            // 夹紧回可见区，导致窗口其实没移出屏幕、仍被 CopyFromScreen 截进去（半透明残影）。
+            var vs = System.Windows.Forms.SystemInformation.VirtualScreen;
+            MainWindow.Left = vs.Right + 1000;
+            MainWindow.Top = vs.Bottom + 1000;
+            await Task.Delay(50);      // 让窗口真正移出并触发 DWM 重绘
             MainWindow.Hide();
+            await Task.Delay(50);      // 等 DWM 把「不含主窗口」的新帧呈现，避免残帧被截
+            // 恢复位置/状态（此时已隐藏，不会跑到屏外）
             MainWindow.Left = left;
             MainWindow.Top = top;
+            MainWindow.WindowState = state;
         }
 
         var bmp = _screenshot!.CaptureFullScreen();
