@@ -15,36 +15,76 @@
 
 ---
 
+## 🖼️ 界面预览
+
+<p align="center">
+  <img src="ReadMeAssets/pic1.png" width="720" alt="调整大小"/>
+  <em>主界面 · 调整大小</em>
+</p>
+
+<p align="center">
+  <img src="ReadMeAssets/pic2.png" width="720" alt="格式转换 PNG"/>
+  <em>主界面 · 格式转换（PNG）</em>
+</p>
+
+<p align="center">
+  <img src="ReadMeAssets/pic3.png" width="720" alt="格式转换 ICO"/>
+  <em>主界面 · 格式转换（ICO 多尺寸导出）</em>
+</p>
+
+<p align="center">
+  <img src="ReadMeAssets/pic4.png" width="720" alt="智能压缩"/>
+  <em>主界面 · 智能压缩</em>
+</p>
+
+<p align="center">
+  <img src="ReadMeAssets/pic5.png" width="720" alt="截图编辑器"/>
+  <em>截图编辑器 · 标注工具栏</em>
+</p>
+
+---
+
 ## ✨ 功能特性
 
 ### 📸 截图与标注（Screenshot Editor）
-- 全局快捷键（默认 `Ctrl + Shift + S`，可在设置中重新录制）随时唤起，即使主窗口最小化也能用
-- 全屏捕获 → 框选区域裁剪
+
+全局快捷键（默认 `Ctrl + Shift + S`，可在设置中重新录制）随时唤起，即使主窗口最小化也能用。全屏捕获 → 框选区域裁剪后进入标注编辑器：
+
 - 丰富的标注工具：**画笔 / 矩形 / 箭头 / 文字 / 高亮 / 马赛克**
-- 笔触粗细三档（细 / 中 / 粗）
+- 笔触粗细三档（细 / 中 / 粗），颜色自由选取
 - **撤销 / 清空**，支持导入现有图片进行再标注
 - **裁剪到选区**，缩放查看（放大 / 缩小 / 适应屏幕）
 - 一键**保存到文件**或**复制到剪贴板**
 
 ### 🔧 调整大小（Resize）
-- 四种模式：**按宽度 / 按高度 / 按百分比 / 指定宽高（Exact）**
-- Exact 模式下提供**「锁定比例」**勾选框，自动保持原图宽高比
-- **实时最终效果预览**：边改尺寸边预览，比例不对可立即看到变形效果（所见即所得）
+
+四种缩放模式满足不同场景：
+
+- **按宽度 / 按高度 / 按百分比**：自动等比缩放，不变形
+- **指定宽高（Exact）**：手动设定精确像素尺寸
+  - 提供**「锁定比例」**勾选框，自动保持原图宽高比
+  - **实时最终效果预览**：边改边看，比例不对立即可见
 - 图片属性面板：显示尺寸 / 分辨率 / 格式 / 文件大小
 
 ### 🔄 格式转换（Convert）
-- 支持 **PNG / JPG / WebP / BMP**，由输出扩展名决定目标格式
+
+支持 **PNG / JPG / WebP / BMP / ICO**，由输出扩展名决定目标格式：
+
 - **圆角**处理：透明格式（PNG/WebP）圆角外透明，不透明格式（JPG/BMP）圆角外填白
-- **ICO 多尺寸导出**：一键生成 16 / 32 / 48 / 64 / 128 / 256 多档图标
+- **ICO 多尺寸导出**：一键生成 16 / 24 / 32 / 48 / 64 / 128 / 256 多档图标（可多选组合）
+- 圆角半径根据图片尺寸动态适配范围
 - 图片属性面板
 
 ### 🗜️ 智能压缩（Compress）
-- 输出格式可选（原格式 / PNG / JPG / WebP / BMP）
+
+输出格式可选（原格式 / PNG / JPG / WebP / BMP）：
+
 - 质量滑块：PNG 下采用**调色板量化**（TinyPNG 同类思路，质量映射为颜色数），JPG/WebP 按质量有损压缩
 - 自动剥离 EXIF / IPTC / XMP 元数据以减小体积
 - 状态栏显示**体积节省百分比**
 
 ### ⚙️ 设置与系统特性
+
 - **全局快捷键重录**：无需记忆默认键，随时改
 - **开机自启**：写入当前用户注册表 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`（无需管理员权限）
 - **系统托盘常驻**：最小化到托盘，双击打开主界面，右键菜单（打开主界面 / 截图 / 设置 / 退出）
@@ -121,6 +161,7 @@ ImageTool/
 ├── App.xaml(.cs)               # 启动、全局热键、托盘、截图编排
 ├── MainWindow.xaml(.cs)        # 主窗口（侧边栏导航 + 内容区）
 ├── Assets/                     # 图标资源（app.ico / app_icon_512.png / app_icon_1024.png）
+├── ReadMeAssets/               # README 展示截图
 ├── Converters/                 # 值转换器（BoolToOpacity / BoolToVisibility / ProgressWidth …）
 ├── Models/                     # 数据模型与枚举（ResizeMode 等）
 ├── Resources/
