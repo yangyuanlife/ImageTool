@@ -37,6 +37,7 @@ public partial class App : System.Windows.Application
         _tray.ShowMainWindow += ShowMainWindow;
         _tray.StartScreenshot += StartScreenshot;
         _tray.OpenSettings += OpenSettings;
+        _tray.AboutRequested += ShowAbout;
         _tray.ExitRequested += () => Shutdown();
 
         _hotkey = new HotkeyService();
@@ -72,6 +73,16 @@ public partial class App : System.Windows.Application
         ShowMainWindow();
         if (MainWindow is MainWindow mw)
             mw.SelectSettingsTab();
+    }
+
+    private void ShowAbout()
+    {
+        var about = new AboutWindow();
+        // 仅当主窗口已显示时才设为 Owner：托盘模式下主窗口默认隐藏，给「未显示」的窗口
+        // 设 Owner 会抛 InvalidOperationException（无法将 Owner 设置为之前未显示的 Window）。
+        if (MainWindow is { IsVisible: true })
+            about.Owner = MainWindow;
+        about.ShowDialog();
     }
 
     /// <summary>唤起截图：先把可见的主窗口移出虚拟屏幕（确定性排除），再捕获全屏并打开编辑器</summary>

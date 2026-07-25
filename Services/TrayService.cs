@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Windows.Forms;
+using ImageTool.Helpers;
 
 namespace ImageTool.Services;
 
@@ -14,6 +15,7 @@ public class TrayService : IDisposable
     public event Action? StartScreenshot;
     public event Action? OpenSettings;
     public event Action? ExitRequested;
+    public event Action? AboutRequested;
 
     public void Initialize()
     {
@@ -30,18 +32,31 @@ public class TrayService : IDisposable
         _notify.DoubleClick += (_, _) => ShowMainWindow?.Invoke();
 
         var menu = new ContextMenuStrip();
+
+        // 顶部版本头部：不可点击，直接展示程序集版本号（来自 VersionHelper）
+        var header = new ToolStripMenuItem($"ImageTool  {VersionHelper.VersionWithPrefix}")
+        {
+            Enabled = false,
+            Font = new Font("Microsoft YaHei", 9f, FontStyle.Bold)
+        };
+        menu.Items.Add(header);
+        menu.Items.Add(new ToolStripSeparator());
+
         var open = new ToolStripMenuItem("打开主界面");
         open.Click += (_, _) => ShowMainWindow?.Invoke();
         var shot = new ToolStripMenuItem("截图");
         shot.Click += (_, _) => StartScreenshot?.Invoke();
         var settings = new ToolStripMenuItem("设置");
         settings.Click += (_, _) => OpenSettings?.Invoke();
+        var about = new ToolStripMenuItem("关于我们");
+        about.Click += (_, _) => AboutRequested?.Invoke();
         var exit = new ToolStripMenuItem("退出");
         exit.Click += (_, _) => ExitRequested?.Invoke();
 
         menu.Items.Add(open);
         menu.Items.Add(shot);
         menu.Items.Add(settings);
+        menu.Items.Add(about);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(exit);
 
