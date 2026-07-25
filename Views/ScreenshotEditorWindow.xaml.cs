@@ -83,6 +83,13 @@ public partial class ScreenshotEditorWindow : Window
     private FontFamily _fontFamily = new FontFamily("Microsoft YaHei");
     private double _fontSize = 20;
 
+    // 文字标注：保持为可移动 / 可再编辑的 TextBox（不再烧录成 TextBlock）
+    private TextBox? _textDrag;       // 正在拖动的文字框
+    private Point _textDragStart;     // 拖动起点（图像空间）
+    private Point _textDragOrigin;    // 文字框原始位置
+    private bool _textDragMoved;      // 本次拖动是否发生位移（用于区分"点击编辑"与"拖动"）
+    private TextBox? _editingText;    // 当前正在编辑（已聚焦）的文字框
+
     // 箭头临时引用（整条箭头是一个实心多边形）
     private Polygon? _arrowShape;
     private Canvas? _arrowContainer;
@@ -493,8 +500,25 @@ public partial class ScreenshotEditorWindow : Window
     {
         if (e.ChangedButton != MouseButton.Left) return;
 
-        // 点到已有文字输入框：交给它自己处理（定位光标 / 选中文字），不要新建、也不要抢走焦点
-        if (IsOnExistingTextBox(e.OriginalSource)) return;
+        // 点到已有文字：准备拖动 / 编辑（不再新建文字框）
+        if (FindTextBox(e.OriginalSource) is { } tb)
+        {
+            if (tb.IsKeyboardFocused)
+                return; // 正在编辑，让文本框自行定位光标 / 选中文字
+            var tp = e.GetPosition(Overlay);
+            if (e.ClickCount == 2)
+            {
+                BeginEditText(tb);   // 双击直接编辑
+                return;
+            }
+            // 单击：记录起点准备拖动；松手时若未发生位移则视为"点击" → 进入编辑
+            _textDrag = tb;
+            _textDragStart = tp;
+            _textDragOrigin = new Point(Canvas.GetLeft(tb), Canvas.GetTop(tb));
+            _textDragMoved = false;
+            Overlay.CaptureMouse();
+            return;
+        }
 
         var pos = e.GetPosition(Overlay);
         _start = pos;
@@ -608,6 +632,18 @@ public partial class ScreenshotEditorWindow : Window
 
     private void Overlay_MouseMove(object sender, MouseEventArgs e)
     {
+        // 拖动已有文字框（单击后移动 -> 重新定位）
+        if (_textDrag != null)
+        {
+            var tp = e.GetPosition(Overlay);
+            double nx = _textDragOrigin.X + (tp.X - _textDragStart.X);
+            double ny = _textDragOrigin.Y + (tp.Y - _textDragStart.Y);
+            Canvas.SetLeft(_textDrag, nx);
+            Canvas.SetTop(_textDrag, ny);
+            _textDragMoved = true;
+            return;
+        }
+
         var pos = e.GetPosition(Overlay);
 
         if (_selResizing) { DoResize(pos); return; }
@@ -648,6 +684,17 @@ public partial class ScreenshotEditorWindow : Window
 
     private void Overlay_MouseUp(object sender, MouseButtonEventArgs e)
     {
+        // 结束文字拖动：未发生位移则视为点击 -> 进入编辑
+        if (_textDrag != null)
+        {
+            var tb = _textDrag;
+            _textDrag = null;
+            Overlay.ReleaseMouseCapture();
+            if (!_textDragMoved)
+                BeginEditText(tb);
+            return;
+        }
+
         Overlay.ReleaseMouseCapture();
 
         if (_selResizing) { _selResizing = false; _activeHandle = null; return; }
@@ -730,17 +777,23 @@ public partial class ScreenshotEditorWindow : Window
 
     private static double Clamp(double v, double min, double max) => v < min ? min : v > max ? max : v;
 
-    // 判断点击是否落在某个已存在的文字输入框（或其内部视觉子元素）上；
-    // 若是，则不应再新建文字框，而应让该文本框自行处理（定位光标 / 选中）。
-    private static bool IsOnExistingTextBox(object? originalSource)
+    // 沿可视树向上找到点击落在其上的文字 TextBox（或其内部视觉子元素）；找不到返回 null。
+    private static TextBox? FindTextBox(object? originalSource)
     {
         var d = originalSource as DependencyObject;
         while (d != null)
         {
-            if (d is TextBox) return true;
+            if (d is TextBox tb) return tb;
             d = VisualTreeHelper.GetParent(d);
         }
-        return false;
+        return null;
+    }
+
+    // 进入文字编辑：聚焦文本框（在输入事件处理完后再聚焦，避免被 WPF 撤销）
+    private void BeginEditText(TextBox tb)
+    {
+        _editingText = tb;
+        tb.Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => tb.Focus()));
     }
 
     // ---- 锥形实心箭头：尾部尖(宽≈1) → 杆逐渐变粗 → 大三角头 ----
@@ -879,18 +932,27 @@ public partial class ScreenshotEditorWindow : Window
         Canvas.SetLeft(tb, p.X);
         Canvas.SetTop(tb, p.Y);
         Overlay.Children.Add(tb);
+
+        // 聚焦态：亮边框（编辑中）；失焦态：透明边框（已放置，但仍可点击拖动 / 再编辑）
+        tb.GotKeyboardFocus += (_, _) =>
+        {
+            tb.BorderBrush = Brushes.DodgerBlue;
+            tb.BorderThickness = new Thickness(1);
+            _editingText = tb;
+        };
+        // 失焦即提交：空内容则删除，否则保持为可移动 / 可再编辑的 TextBox（不再烧录成 TextBlock）
+        tb.LostKeyboardFocus += (_, _) => CommitText(tb);
         // 关键：在 MouseDown 处理中直接 Focus() 会被 WPF 在本次输入事件结束时撤销，
         // 导致光标进不去、无法输入（表现为「点击没反应」）。改用 Dispatcher 在输入事件
         // 处理完之后再聚焦，确保文本框拿到键盘焦点、可以正常打字。
         tb.Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => tb.Focus()));
-        tb.LostKeyboardFocus += (_, _) => CommitText(tb);
         tb.KeyDown += (_, ev) =>
         {
             if (ev.Key == Key.Enter)
                 tb.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
             else if (ev.Key == Key.Escape)
             {
-                Overlay.Children.Remove(tb);
+                RemoveText(tb);
                 ev.Handled = true;
             }
         };
@@ -901,24 +963,24 @@ public partial class ScreenshotEditorWindow : Window
         var text = tb.Text.Trim();
         if (string.IsNullOrEmpty(text))
         {
-            Overlay.Children.Remove(tb);
+            RemoveText(tb);
             return;
         }
-        var blk = new TextBlock
+        // 保持为可移动 / 可再编辑的 TextBox（不再烧录成 TextBlock）；边框转透明（已放置态）
+        tb.BorderBrush = Brushes.Transparent;
+        tb.BorderThickness = new Thickness(1);
+        _editingText = null;
+        if (!_annotations.Contains(tb))
         {
-            Text = text,
-            Foreground = tb.Foreground,
-            FontFamily = tb.FontFamily,
-            FontSize = tb.FontSize,
-            FontWeight = FontWeights.Bold,
-            Effect = new DropShadowEffect { Color = Colors.Black, BlurRadius = 0, ShadowDepth = 1, Opacity = 0.65 }
-        };
-        Canvas.SetLeft(blk, Canvas.GetLeft(tb));
-        Canvas.SetTop(blk, Canvas.GetTop(tb));
+            _annotations.Add(tb);
+            PushUndo(() => RemoveText(tb));
+        }
+    }
+
+    private void RemoveText(TextBox tb)
+    {
         Overlay.Children.Remove(tb);
-        Overlay.Children.Add(blk);
-        _annotations.Add(blk);
-        PushUndo(() => RemoveAnnotation(blk));
+        _annotations.Remove(tb);
     }
 
     // ===================== 裁剪 =====================

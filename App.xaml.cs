@@ -1,6 +1,8 @@
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using ImageTool.Services;
 using ImageTool.Views;
 
@@ -85,37 +87,60 @@ public partial class App : System.Windows.Application
         about.ShowDialog();
     }
 
-    /// <summary>唤起截图：先把可见的主窗口移出虚拟屏幕（确定性排除），再捕获全屏并打开编辑器</summary>
-    internal async void StartScreenshot()
+    /// <summary>唤起截图：先把可见的主窗口移出虚拟屏幕并隐藏，等 DWM 真正重绘后再捕获，避免半透明主窗口残影；编辑器关闭后恢复主窗口。</summary>
+    internal void StartScreenshot()
     {
-        if (MainWindow is { IsVisible: true })
+        var wasVisible = MainWindow is { IsVisible: true };
+        double savedLeft = 0, savedTop = 0;
+        var savedState = WindowState.Normal;
+
+        if (wasVisible)
         {
-            var left = MainWindow.Left;
-            var top = MainWindow.Top;
-            var state = MainWindow.WindowState;
+            savedLeft = MainWindow.Left;
+            savedTop = MainWindow.Top;
+            savedState = MainWindow.WindowState;
             // 最大化时 Left/Top 不生效，先恢复正常窗口再移动
-            if (state == WindowState.Maximized)
+            if (savedState == WindowState.Maximized)
                 MainWindow.WindowState = WindowState.Normal;
 
-            // 移到虚拟屏幕之外：用 VirtualScreen 边界 + 偏移，确保落在「真正空的区域」。
-            // 注意：不要用 (-100000,-100000) 这类极端坐标——窗口管理器会把超范围坐标
-            // 夹紧回可见区，导致窗口其实没移出屏幕、仍被 CopyFromScreen 截进去（半透明残影）。
+            // 1) 移到虚拟屏幕之外：即便 DWM 还没重绘、捕获读到的是上一帧，窗口也已不在捕获矩形内（几何排除）
             var vs = System.Windows.Forms.SystemInformation.VirtualScreen;
             MainWindow.Left = vs.Right + 1000;
             MainWindow.Top = vs.Bottom + 1000;
-            await Task.Delay(50);      // 让窗口真正移出并触发 DWM 重绘
+            // 强制消息泵处理这一次位置变更，确保 Win32 窗口真的被挪走（避免 SetWindowPos 消息排队延迟）
+            MainWindow.Dispatcher.Invoke(DispatcherPriority.Render, new Action(() => { }));
+            // 2) 隐藏，彻底从桌面移除
             MainWindow.Hide();
-            await Task.Delay(50);      // 等 DWM 把「不含主窗口」的新帧呈现，避免残帧被截
-            // 恢复位置/状态（此时已隐藏，不会跑到屏外）
-            MainWindow.Left = left;
-            MainWindow.Top = top;
-            MainWindow.WindowState = state;
+            // 3) 关键：等 DWM 把「不含主窗口」的新帧真正呈现到屏幕，再捕获（消除半透明残影）。
+            //    不能用固定 Task.Delay 赌时序——DwmFlush 会阻塞到下一次 DWM 呈现，确定性保证窗口已消失。
+            DwmFlush();
         }
 
         var bmp = _screenshot!.CaptureFullScreen();
         var editor = new ScreenshotEditorWindow(bmp);
+        // 编辑器关闭后恢复主窗口（仅当本次截图前主窗口可见）
+        if (wasVisible)
+        {
+            editor.Closed += (_, _) =>
+            {
+                if (MainWindow is { IsVisible: false })
+                {
+                    MainWindow.Dispatcher.Invoke(() =>
+                    {
+                        MainWindow.Left = savedLeft;
+                        MainWindow.Top = savedTop;
+                        MainWindow.WindowState = savedState;
+                        MainWindow.Show();
+                        MainWindow.Activate();
+                    });
+                }
+            };
+        }
         editor.Show();
     }
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmFlush();
 
     /// <summary>从「打开图片」入口：直接加载一张本地图片进入截图编辑器（不截屏），可标注/马赛克/导出</summary>
     internal void OpenImageEditor(string path)
