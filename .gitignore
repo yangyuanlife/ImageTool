@@ -33,3 +33,6 @@ Desktop.ini
 
 # Temp
 *.tmp
+
+# Release artifacts (自包含发布产物，体积大不入库)
+ImageTool-*.zip

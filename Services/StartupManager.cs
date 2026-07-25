@@ -43,8 +43,10 @@ public static class StartupManager
         if (exe.EndsWith("imagetool.exe", StringComparison.OrdinalIgnoreCase))
             return $"\"{exe}\"";
 
-        var dll = System.Reflection.Assembly.GetEntryAssembly()?.Location;
-        if (!string.IsNullOrEmpty(dll) && dll.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+        // 单文件发布时 Assembly.Location 返回空字符串（IL3000），改用 AppContext.BaseDirectory 拼入口 dll 路径
+        var entryName = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name ?? "ImageTool";
+        var dll = Path.Combine(AppContext.BaseDirectory, entryName + ".dll");
+        if (dll.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
         {
             var dotnet = Path.Combine(Path.GetDirectoryName(exe) ?? "", "dotnet.exe");
             if (!File.Exists(dotnet)) dotnet = "dotnet.exe";
