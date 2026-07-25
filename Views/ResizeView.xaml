@@ -1,0 +1,124 @@
+<UserControl x:Class="ImageTool.Views.ResizeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:ImageTool.Converters">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <conv:BoolToOpacityConverter x:Key="BoolToOpacity"/>
+    </UserControl.Resources>
+    <Grid Margin="28">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="预览" Style="{StaticResource FieldLabel}"/>
+                <Border Height="220" Background="#F1F5F9" CornerRadius="8">
+                    <Image Source="{Binding Preview}" Stretch="Uniform" Margin="8"/>
+                </Border>
+                <Button Content="选择图片…" Command="{Binding BrowseInputCommand}"
+                        Style="{StaticResource PrimaryButton}" Margin="0,14,0,0"/>
+                <TextBlock Text="{Binding InputPath}" TextWrapping="Wrap" Style="{StaticResource HintText}" Margin="0,8,0,0"/>
+
+                <Border Visibility="{Binding HasImageInfo, Converter={StaticResource BoolToVis}}"
+                        Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="10" Padding="12,10" Margin="0,10,0,0">
+                    <StackPanel>
+                        <TextBlock Text="图片信息" Style="{StaticResource FieldLabel}" FontSize="12" Margin="0,0,0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="64"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="尺寸" Style="{StaticResource HintText}" Margin="0,0,0,5"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding DimensionsText}" Style="{StaticResource HintText}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,5"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="分辨率" Style="{StaticResource HintText}" Margin="0,0,0,5"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DpiText}" Style="{StaticResource HintText}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,5"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="格式" Style="{StaticResource HintText}" Margin="0,0,0,5"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding FormatText}" Style="{StaticResource HintText}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,5"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="文件大小" Style="{StaticResource HintText}"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding FileSizeText}" Style="{StaticResource HintText}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer Grid.Column="1" Margin="28,0,0,0"
+                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <TextBlock Text="调整大小" Style="{StaticResource PageTitle}"/>
+
+            <TextBlock Text="缩放模式" Style="{StaticResource FieldLabel}"/>
+            <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}"
+                      Style="{StaticResource ComboBoxStyle}" Margin="0,0,0,14"/>
+
+            <TextBlock Text="宽度 (px)" Style="{StaticResource FieldLabel}"
+                       Opacity="{Binding WidthEnabled, Converter={StaticResource BoolToOpacity}}"/>
+            <TextBox Text="{Binding Width, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource InputBox}" Margin="0,0,0,14"
+                     IsEnabled="{Binding WidthEnabled}"/>
+
+            <TextBlock Text="高度 (px)" Style="{StaticResource FieldLabel}"
+                       Opacity="{Binding HeightEnabled, Converter={StaticResource BoolToOpacity}}"/>
+            <TextBox Text="{Binding Height, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource InputBox}" Margin="0,0,0,14"
+                     IsEnabled="{Binding HeightEnabled}"/>
+
+            <!-- Exact 模式专属：锁定比例 + 实时最终效果预览 -->
+            <CheckBox Content="锁定比例（保持原图宽高比）"
+                      IsChecked="{Binding LockAspectRatio}"
+                      Visibility="{Binding LockRatioVisible, Converter={StaticResource BoolToVis}}"
+                      Style="{StaticResource CheckBoxStyle}" Margin="0,0,0,14"/>
+
+            <Border Visibility="{Binding FinalPreviewVisible, Converter={StaticResource BoolToVis}}"
+                    Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,0,14">
+                <StackPanel>
+                    <TextBlock Text="最终效果预览" Style="{StaticResource FieldLabel}" FontSize="12" Margin="0,0,0,8"/>
+                    <Border Background="#F1F5F9" CornerRadius="8" HorizontalAlignment="Center">
+                        <Image Source="{Binding Preview}" Stretch="Fill"
+                               Width="{Binding FinalPreviewWidth}" Height="{Binding FinalPreviewHeight}" Margin="8"/>
+                    </Border>
+                    <TextBlock Text="{Binding FinalPreviewText}" Style="{StaticResource HintText}"
+                               HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="百分比 (%)" Style="{StaticResource FieldLabel}"
+                       Opacity="{Binding PercentageEnabled, Converter={StaticResource BoolToOpacity}}"/>
+            <TextBox Text="{Binding Percentage}" Style="{StaticResource InputBox}" Margin="0,0,0,14"
+                     IsEnabled="{Binding PercentageEnabled}"/>
+
+            <TextBlock Text="质量 (1-100)" Style="{StaticResource FieldLabel}"/>
+            <TextBox Text="{Binding Quality}" Style="{StaticResource InputBox}" Margin="0,0,0,14"/>
+
+            <TextBlock Text="输出路径" Style="{StaticResource FieldLabel}"/>
+            <Grid Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Text="{Binding OutputPath}" Style="{StaticResource InputBox}" Grid.Column="0"/>
+                <Button Content="浏览" Command="{Binding BrowseOutputCommand}"
+                        Style="{StaticResource GhostButton}" Grid.Column="1" Margin="8,0,0,0"/>
+            </Grid>
+
+            <Button Content="开始缩放并保存" Command="{Binding RunCommand}" Style="{StaticResource SuccessButton}" HorizontalAlignment="Left"/>
+
+            <ProgressBar Value="{Binding Progress}" Style="{StaticResource ProgressBarStyle}" Margin="0,16,0,6"/>
+            <TextBlock Text="{Binding Status}" Style="{StaticResource HintText}"/>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

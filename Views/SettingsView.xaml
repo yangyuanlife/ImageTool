@@ -1,0 +1,41 @@
+<UserControl x:Class="ImageTool.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vm="clr-namespace:ImageTool.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:SettingsViewModel}"
+             Padding="28" FontSize="14">
+    <Border Style="{StaticResource Card}" MaxWidth="560">
+        <StackPanel>
+            <TextBlock Text="设置" Style="{StaticResource PageTitle}"/>
+
+            <CheckBox Content="开机自动启动（写入当前用户注册表启动项）"
+                      IsChecked="{Binding AutoStart, Mode=TwoWay}"
+                      Style="{StaticResource CheckBoxStyle}" Margin="0,0,0,18"/>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                <TextBlock Text="全局截图热键：" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{StaticResource TextBrush}"/>
+                <Border Background="#EFF6FF" Padding="8,4" CornerRadius="6" MinWidth="120" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding HotkeyText}" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}"/>
+                </Border>
+                <Button x:Name="RecordButton" Content="录制快捷键" Click="RecordButton_Click"
+                        Style="{StaticResource GhostButton}" Margin="8,0,0,0"/>
+                <TextBlock Text="（点击后按下组合键）" VerticalAlignment="Center" Style="{StaticResource HintText}" Margin="8,0,0,0"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                <TextBlock Text="截图默认保存目录：" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{StaticResource TextBrush}"/>
+                <TextBox Text="{Binding SaveDir, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource InputBox}" Width="240" VerticalAlignment="Center"/>
+                <Button Content="浏览" Click="BrowseButton_Click" Style="{StaticResource GhostButton}" Margin="8,0,0,0"/>
+            </StackPanel>
+
+            <Button Content="保存设置" Command="{Binding SaveCommand}"
+                    Style="{StaticResource PrimaryButton}" Width="120" HorizontalAlignment="Left" Margin="0,0,0,16"/>
+
+            <TextBlock Text="{Binding Status}" Foreground="{StaticResource SuccessBrush}" FontWeight="Bold"/>
+        </StackPanel>
+    </Border>
+</UserControl>
