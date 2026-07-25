@@ -2,9 +2,10 @@
 :: ============================================================================
 ::  ImageTool 一键发布脚本
 ::  功能: 1) 自包含单文件发布(win-x64)  2) 打包成 ImageTool-<版本>-win-x64.zip
-::        3) 若设置了 GITHUB_TOKEN 或已安装 gh，自动创建/上传 GitHub Release
-::  用法: 双击运行，或命令行  set GITHUB_TOKEN=xxx && publish-release.bat
-::  说明: Release 上传需要 GitHub 令牌(repo 权限)。没有令牌时跳过第3步，
+::        3) 优先用 gh CLI 发布；未安装 gh 时若设了 GITHUB_TOKEN 则回退 PowerShell API
+::  用法: 双击运行（需先 `gh auth login` 一次），或  set GITHUB_TOKEN=xxx && publish-release.bat
+::  说明: 推荐装 gh CLI（winget install --id GitHub.cli），`gh auth login` 浏览器授权后
+::        发布全自动、无需手填 token，且 --clobber 可自动覆盖同名附件。无 gh 且无 token 时跳过第3步，
 ::        但仍会生成 zip，可手动到 GitHub Releases 拖入。
 :: ============================================================================
 setlocal EnableDelayedExpansion
@@ -40,8 +41,18 @@ rmdir /s /q "%NAME%"
 echo   完成: %ZIP%
 
 echo [3/3] 发布到 GitHub Release ...
-if defined GITHUB_TOKEN (
-    echo   检测到 GITHUB_TOKEN，附加到 GitHub Release ...
+:: 优先用 gh CLI（官方、稳、免手填 token）；其次回退 GITHUB_TOKEN + PowerShell API
+where gh >nul 2>nul (
+    echo   检测到 gh CLI，优先用它发布 ...
+    gh release view "v%VERSION%" >nul 2>nul && (
+        echo   v%VERSION% 已存在，覆盖上传附件 (--clobber) ...
+        gh release upload "v%VERSION%" "%ZIP%" --clobber
+    ) || (
+        echo   创建 v%VERSION% 并上传附件 ...
+        gh release create "v%VERSION%" "%ZIP%" --title "v%VERSION%" --notes "ImageTool %VERSION% 自包含单文件发布（图标已嵌入程序集，仅含单个 ImageTool.exe）。"
+    )
+) else if defined GITHUB_TOKEN (
+    echo   未安装 gh，回退到 GITHUB_TOKEN (PowerShell API) ...
     set "GH_REPO=yangyuanlife/ImageTool"
     set "GH_TAG=v%VERSION%"
     set "GH_ZIP=%ZIP%"
@@ -64,13 +75,8 @@ if defined GITHUB_TOKEN (
     powershell -NoProfile -ExecutionPolicy Bypass -File "%PS%"
     if exist "%PS%" del /q "%PS%"
 ) else (
-    where gh >nul 2>nul && (
-        echo   检测到 gh CLI，上传到 v%VERSION% ...
-        gh release upload "v%VERSION%" "%ZIP%" 2>nul || gh release create "v%VERSION%" "%ZIP%" --title "v%VERSION%" --notes "ImageTool %VERSION%"
-    ) || (
-        echo   [SKIP] 未设置 GITHUB_TOKEN 且未安装 gh，跳过 Release 上传。
-        echo   手动上传: GitHub 仓库 Releases -^> v%VERSION% -^> 把 %ZIP% 拖进去即可。
-    )
+    echo   [SKIP] 未安装 gh 且未设置 GITHUB_TOKEN，跳过 Release 上传。
+    echo   手动上传: GitHub 仓库 Releases -^> v%VERSION% -^> 把 %ZIP% 拖进去即可。
 )
 
 echo ============================================================
