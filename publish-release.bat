@@ -1,5 +1,5 @@
-?@echo off
-chcp 65001 >nul
+@echo off
+chcp 936 >nul
 :: ============================================================================
 ::  ImageTool 一键发布脚本
 ::  功能: 1) 多目标发布（自包含单文件 + 框架依赖） 2) 打包到 publish/ 目录
@@ -11,7 +11,7 @@ chcp 65001 >nul
 ::        GitHub 发布全自动、无需手填 token，且 --clobber 可自动覆盖同名附件。
 ::        无对应 token 时该平台跳过，但仍会生成 zip，可手动到对应 Releases 拖入。
 ::        Gitee 私人令牌: Gitee 设置 -> 私人令牌，勾 projects 权限。
-::  编码: 本文件为 UTF-8 带 BOM；配合上方 chcp 65001，中文提示可正常显示不乱码。
+::  编码: 本文件为 UTF-8 带 BOM；配合上方 chcp 936，中文提示可正常显示不乱码。
 :: ============================================================================
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
@@ -42,7 +42,7 @@ set FOLDER=ImageTool-%VERSION%-%RID%-self-contained
 
 echo.
 echo [1/3] 自包含单文件发布 (%RID%) ...
-dotnet publish ImageTool.csproj -c Release -r %RID% --self-contained true ^
+dotnet publish -c Release -r %RID% --self-contained true ^
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true ^
     -p:DebugType=none -p:EnableCompressionInBuild=true ^
     -o "%BUILD%"
@@ -68,15 +68,13 @@ set FOLDER=ImageTool-%VERSION%-%RID%-self-contained
 
 echo.
 echo [2/3] 自包含单文件发布 (%RID%) ...
-dotnet publish ImageTool.csproj -c Release -r %RID% --self-contained true ^
+dotnet publish -c Release -r %RID% --self-contained true ^
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true ^
     -p:DebugType=none -p:EnableCompressionInBuild=true ^
-    -o "%BUILD%" > "%OUT%\publish-%RID%.log" 2>&1
+    -o "%BUILD%"
 if errorlevel 1 (
-    echo   [警告] %RID% 自包含发布失败，已跳过此变体。
-    echo   详细错误已写入日志: %OUT%\publish-%RID%.log
-    echo   失败输出（末尾 20 行）:
-    powershell -NoProfile -Command "Get-Content '%OUT%\publish-%RID%.log' -Tail 20"
+    echo   [警告] %RID% 自包含发布失败（可能缺少 ARM64 目标包），跳过此变体。
+    echo   如需支持 ARM64，请运行: dotnet workload install windows-desktop-arm64
     goto :skip_arm64
 )
 
@@ -101,7 +99,7 @@ set FOLDER=ImageTool-%VERSION%-%RID%-framework-dependent
 
 echo.
 echo [3/3] 框架依赖发布 (%RID%，需 .NET 10 运行时) ...
-dotnet publish ImageTool.csproj -c Release -r %RID% --self-contained false ^
+dotnet publish -c Release -r %RID% --self-contained false ^
     -p:DebugType=none ^
     -o "%BUILD%"
 if errorlevel 1 ( echo [失败] %RID% 框架依赖发布失败 & exit /b 1 )
