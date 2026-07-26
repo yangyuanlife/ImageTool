@@ -115,11 +115,16 @@ foreach ($zip in $zips) {
     # access_token 作为表单字段（贴合 Gitee 文档，亦为之前采用的形式）
     # 关键：必须用数组形式直接调用 curl（& curl @args），绝不能走 Start-Process -ArgumentList ——
     # 后者会把含空格的路径（如 C:\Users\joe jiang\...）重新解析，切出多余参数被 curl 当成非法 URL（报错 Bad hostname）。
-    $curlArgs = @('-s', '-S', '--connect-timeout', '30', '--max-time', '600',
+    # --speed-limit 1 --speed-time 30：连续 30s 速率<1B/s 即中止 → 心跳还在跳就证明字节在流动（否则早崩了）
+    # --max-time 1800：宽限 30 分钟，慢速但不中断的真实上传能跑完（空转会被上面的限速保护秒杀）
+    # -w：结束记录实际上传量/速率/耗时，写日志便于判断是否网络本身慢
+    $curlArgs = @('-s', '-S', '--connect-timeout', '30', '--max-time', '1800',
+                   '--speed-limit', '1', '--speed-time', '30',
                    '-X', 'POST', $uploadUrl,
                    '-F', "access_token=$token",
                    '-F', "file=@$($zip.FullName)",
-                   '-o', $respFile)
+                   '-o', $respFile,
+                   '-w', 'UPLOAD_SIZE=%{size_upload} SPEED_BPS=%{speed_upload} TIME_S=%{time_total}')
     $cmdLine = 'curl ' + (($curlArgs | ForEach-Object { if ($_ -match '\s') { '"{0}"' -f $_ } else { $_ } }) -join ' ')
     Write-Log ('cmd: {0}' -f ($cmdLine -replace [regex]::Escape($token), '***'))
     $t0 = Get-Date
@@ -136,11 +141,12 @@ foreach ($zip in $zips) {
         while ($job.State -eq 'Running') {
             Start-Sleep -Seconds 10
             $elapsed += 10
-            Write-Log ('... 上传进行中（已 {0}s，请勿关闭窗口）' -f $elapsed)
-            Write-Output ('  -> 上传进行中（已 {0}s，请勿关闭窗口）' -f $elapsed)
+            Write-Log ('... 上传进行中（已 {0}s，连接仍活跃=字节仍在传；若 30s 内速率<1B/s 会自动中止）' -f $elapsed)
+            Write-Output ('  -> 上传进行中（已 {0}s）仍活跃=在传数据；限速保护会在空转时自动中止' -f $elapsed)
         }
         $jobOut = Receive-Job $job
         Remove-Job $job -Force
+        Write-Log ('job output: {0}' -f ($jobOut -join ' | '))
         if ($jobOut -match 'EXITCODE=(\d+)') { $curlExit = [int]$Matches[1] } else { $curlExit = -1 }
     } catch {
         Write-Log ('Start-Job 不可用，回退前台直接调用：{0}' -f $_.Exception.Message)
