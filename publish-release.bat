@@ -2,7 +2,7 @@
 :: ============================================================================
 ::  ImageTool 一键发布脚本
 ::  功能: 1) 多目标发布（自包含单文件 + 框架依赖） 2) 打包到 publish/ 目录
-::        3) GitHub Release：优先 gh CLI，未装 gh 则回退 GITHUB_TOKEN + PowerShell API
+::        3) GitHub Release：优先 gh CLI，未装 gh 则回退 GITHUB_TOKEN + PowerShell API（上传后自动清理旧版单文件附件）
 ::        4) Gitee  Release：设了 GITEE_TOKEN 则调 upload-gitee.ps1（OpenAPI）
 ::  用法: 双击运行（需先 `gh auth login` 一次），或
 ::        set GITHUB_TOKEN=xxx && set GITEE_TOKEN=yyy && publish-release.bat
@@ -149,6 +149,8 @@ where gh >nul 2>nul (
 - `win-arm64-self-contained.zip` — ARM Windows（如 Surface Pro X）
 - `win-x64-framework-dependent.zip` — 需装 [.NET 10 运行时](https://dotnet.microsoft.com/download/dotnet/10.0)，体积小 ~80%"
     )
+    echo   清理 GitHub 旧版单文件附件（如有）...
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0clean-github-stale.ps1"
 ) else if defined GITHUB_TOKEN (
     echo   未安装 gh，回退到 GITHUB_TOKEN (PowerShell API) ...
     set "GH_REPO=yangyuanlife/ImageTool"
