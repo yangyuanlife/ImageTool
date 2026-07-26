@@ -11,7 +11,7 @@ chcp 936 >nul
 ::        GitHub 发布全自动、无需手填 token，且 --clobber 可自动覆盖同名附件。
 ::        无对应 token 时该平台跳过，但仍会生成 zip，可手动到对应 Releases 拖入。
 ::        Gitee 私人令牌: Gitee 设置 -> 私人令牌，勾 projects 权限。
-::  编码: 本文件为 UTF-8 带 BOM；配合上方 chcp 936，中文提示可正常显示不乱码。
+::  编码: 本文件为 GBK(cp936) 无 BOM；配合上方 chcp 936，中文提示可正常显示不乱码。
 :: ============================================================================
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
