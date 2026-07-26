@@ -17,23 +17,22 @@ $tag   = "v$version"
 $apiBase = "https://gitee.com/api/v5/repos/$owner/$repo"
 
 # ---- 1. 查是否已有同 tag 的 Release ----
-$getUrl = "$apiBase/releases/tags/$tag"
+$getUrl = "$apiBase/releases/tags/$tag`?access_token=$token"
 try {
-    $rel = Invoke-RestMethod -Uri "$getUrl`?access_token=$token" -Method Get -TimeoutSec 30
+    $rel = Invoke-RestMethod -Uri $getUrl -Method Get -TimeoutSec 30
     Write-Output "Gitee: Release $tag 已存在 (id=$($rel.id))，复用之"
 } catch [System.Net.WebException] {
     $resp = $_.Exception.Response
     if ($resp -and $resp.StatusCode -eq 404) {
         # ---- 2. 不存在则创建 ----
         $createBody = @{
-            access_token      = $token
-            tag_name          = $tag
-            name              = $tag
-            body              = "ImageTool $tag`n`nWindows 截图 / 图片处理工具。`n- win-x64 自包含单文件（推荐，双击即跑）`n- win-arm64 自包含单文件（ARM Windows）`n- win-x64 框架依赖（需装 .NET 10 运行时，体积小）"
-            target_commitish  = 'master'
-        } | ConvertTo-Json -Compress
-        $rel = Invoke-RestMethod -Uri "$apiBase/releases" -Method Post `
-            -Body $createBody -ContentType 'application/json' -TimeoutSec 30
+            access_token     = $token
+            tag_name         = $tag
+            name             = $tag
+            body             = "ImageTool $tag`n`nWindows 截图 / 图片处理工具。`n- win-x64 自包含单文件（推荐，双击即跑）`n- win-arm64 自包含单文件（ARM Windows）`n- win-x64 框架依赖（需装 .NET 10 运行时，体积小）"
+            target_commitish = 'master'
+        }
+        $rel = Invoke-RestMethod -Uri "$apiBase/releases" -Method Post -Body $createBody -TimeoutSec 30
         Write-Output "Gitee: 创建 Release $tag (id=$($rel.id))"
     } else {
         throw
@@ -46,36 +45,25 @@ $releaseId = $rel.id
 $zips = Get-ChildItem "publish\ImageTool-$version-*.zip"
 if ($zips.Count -eq 0) { Write-Error "publish/ 下未找到任何 ImageTool-$version-*.zip"; exit 1 }
 
-$boundary  = [System.Guid]::NewGuid().ToString()
-$uploadUrl = "$apiBase/releases/$releaseId/attach_files"
+# 关键: access_token 必须放在 URL query 参数里（Gitee 强制要求），否则返回 405
+$uploadBase = "$apiBase/releases/$releaseId/attach_files`?access_token=$token"
 
 foreach ($zip in $zips) {
     Write-Output ("Gitee: 上传 {0} ({1:N1} MB) ..." -f $zip.Name, ($zip.Length / 1MB))
-
-    $fileBin  = [System.IO.File]::ReadAllBytes($zip.FullName)
-    $fileName = $zip.Name
-
-    $headerLines = @(
-        "--$boundary",
-        'Content-Disposition: form-data; name="access_token"',
-        "",
-        $token,
-        "--$boundary",
-        "Content-Disposition: form-data; name=`"file`"; filename=`"$fileName`"",
-        "Content-Type: application/zip",
-        ""
-    )
-    $bodyStart = [System.Text.Encoding]::UTF8.GetBytes(($headerLines -join "`r`n") + "`r`n")
-    $bodyEnd   = [System.Text.Encoding]::UTF8.GetBytes("`r`n--$boundary--`r`n")
-
-    $body = New-Object byte[] ($bodyStart.Length + $fileBin.Length + $bodyEnd.Length)
-    [System.Buffer]::BlockCopy($bodyStart, 0, $body, 0, $bodyStart.Length)
-    [System.Buffer]::BlockCopy($fileBin,   0, $body, $bodyStart.Length, $fileBin.Length)
-    [System.Buffer]::BlockCopy($bodyEnd,   0, $body, $bodyStart.Length + $fileBin.Length, $bodyEnd.Length)
-
-    $result = Invoke-RestMethod -Uri $uploadUrl -Method Post `
-        -Body $body -ContentType "multipart/form-data; boundary=$boundary" -TimeoutSec 600
-    Write-Output ("  -> 完成: {0}" -f $result.url)
+    try {
+        $result = Invoke-RestMethod -Uri "$uploadBase&name=$($zip.Name)" -Method Post `
+            -Form @{ file = Get-Item -Path $zip.FullName } -TimeoutSec 600
+        Write-Output ("  -> 完成: {0}" -f $result.url)
+    } catch {
+        $msg = $_.Exception.Message
+        # Gitee 对同名附件重复上传返回 400 且含"重复/已存在"字样，视为已存在跳过
+        if ($msg -match '重复|已存在|exist|already') {
+            Write-Output ("  -> 已存在，跳过: {0}" -f $zip.Name)
+        } else {
+            Write-Error ("  -> 上传失败: {0}" -f $msg)
+            exit 1
+        }
+    }
 }
 
 Write-Output "Gitee: 全部上传完成 -> https://gitee.com/$owner/$repo/releases/$tag"
