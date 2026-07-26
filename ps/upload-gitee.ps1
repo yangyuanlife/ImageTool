@@ -91,29 +91,74 @@ if (-not $releaseDir) { $releaseDir = "Release\v$version" }
 $zips = Get-ChildItem "$releaseDir\ImageTool-$version-*.zip"
 if ($zips.Count -eq 0) { Write-Error "no ImageTool-$version-*.zip under $releaseDir"; exit 1 }
 
+# ---- 文件日志：排障用（Release 目录已被 gitignore，不会进库）----
+$logPath = Join-Path $releaseDir 'gitee-upload.log'
+function Write-Log($m) {
+    $line = ('[{0}] {1}' -f (Get-Date -Format 'HH:mm:ss'), $m)
+    Write-Output $line
+    try { Add-Content -Path $logPath -Value $line -Encoding UTF8 } catch {}
+}
+function Mask($s) { if (($s -is [string]) -and $s.Length -gt 8) { $s.Substring(0,4) + '...' + $s.Substring($s.Length-4) } else { '***' } }
+try { Set-Content -Path $logPath -Value ('=== Gitee 上传日志 {0} ===' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')) -Encoding UTF8 } catch {}
+Write-Log ('VERSION={0} token={1} RELEASE_DIR={2}' -f $version, (Mask $token), $releaseDir)
+Write-Log ('curl path: {0}' -f $curl.Path)
+try { $cv = & curl.exe --version 2>&1 | Select-Object -First 1; Write-Log ('curl: {0}' -f $cv) } catch {}
+
 $uploadUrl = "$apiBase/releases/$releaseId/attach_files"
-Write-Output ("Gitee: upload url = {0}" -f ($uploadUrl -replace [regex]::Escape($token), '***'))
+Write-Log ("upload url = {0}" -f ($uploadUrl -replace [regex]::Escape($token), '***'))
 
 foreach ($zip in $zips) {
+    Write-Log ('=== uploading {0} ({1:N1} MB) ===' -f $zip.Name, ($zip.Length / 1MB))
     Write-Output ("Gitee: uploading {0} ({1:N1} MB) ..." -f $zip.Name, ($zip.Length / 1MB))
-    Write-Output "  -> 进度条（#）会实时显示；若长时间不动说明连接卡住，最多 600s 超时后报错"
     $respFile = [System.IO.Path]::GetTempFileName()
-    # 关键修复：进度条（-# 写 stderr）必须实时输出到控制台，绝不能捕获进变量（会缓冲，导致「卡住没动静」）。
-    # 响应体用 -o 存临时文件，结束后再读取做成功/失败判断。access_token 按 Gitee 文档放 query。
-    $upUrl = $uploadUrl + '?access_token=' + $token
-    & curl.exe -sS -# --connect-timeout 30 --max-time 600 -X POST $upUrl -F "file=@$($zip.FullName)" -o $respFile
-    $curlExit = $LASTEXITCODE
+    $errFile  = [System.IO.Path]::GetTempFileName()
+    # access_token 作为表单字段（贴合 Gitee 文档，亦为之前采用的形式）
+    $curlArgs = @('-s', '-S', '--connect-timeout', '30', '--max-time', '600',
+                   '-X', 'POST', $uploadUrl,
+                   '-F', "access_token=$token",
+                   '-F', "file=@$($zip.FullName)",
+                   '-o', $respFile)
+    $cmdLine = 'curl ' + (($curlArgs | ForEach-Object { if ($_ -match '\s') { '"{0}"' -f $_ } else { $_ } }) -join ' ')
+    Write-Log ('cmd: {0}' -f ($cmdLine -replace [regex]::Escape($token), '***'))
+    $t0 = Get-Date
+    $curlExit = $null
+    try {
+        # Start-Process 可轮询心跳 + 捕获 stderr（写日志）；若环境异常则回退直接调用
+        $proc = Start-Process -FilePath $curl.Path -ArgumentList $curlArgs -NoNewWindow -PassThru -RedirectStandardError $errFile
+        $elapsed = 0
+        while (-not $proc.HasExited) {
+            Start-Sleep -Seconds 10
+            $elapsed += 10
+            Write-Log ('... 上传进行中（已 {0}s，请勿关闭窗口）' -f $elapsed)
+            Write-Output ('  -> 上传进行中（已 {0}s，请勿关闭窗口）' -f $elapsed)
+        }
+        $curlExit = $proc.ExitCode
+    } catch {
+        Write-Log ('Start-Process 失败，回退直接调用：{0}' -f $_.Exception.Message)
+        & $curl.Path @curlArgs 2>> $errFile
+        $curlExit = $LASTEXITCODE
+    }
+    $dur = ((Get-Date) - $t0).TotalSeconds
     $result = [System.IO.File]::ReadAllText($respFile, $utf8NoBom)
+    $errText = ''
+    if (Test-Path $errFile) { $errText = [System.IO.File]::ReadAllText($errFile, $utf8NoBom) }
     Remove-Item $respFile -Force -ErrorAction SilentlyContinue
+    Remove-Item $errFile -Force -ErrorAction SilentlyContinue
+    Write-Log ('curl exit={0} 耗时={1:N1}s' -f $curlExit, $dur)
+    Write-Log ('stderr: {0}' -f $(if ($errText) { $errText.Trim() } else { '(空)' }))
+    Write-Log ('response body: {0}' -f $(if ($result) { $result.Trim() } else { '(空)' }))
     $preview = $result.Trim()
     if ($preview.Length -gt 400) { $preview = $preview.Substring(0, 400) }
     Write-Output ("  -> curl exit={0}，HTTP 响应: {1}" -f $curlExit, $preview)
     if ($result -match '"id"\s*:') {
         Write-Output "  -> done"
+        Write-Log 'result: SUCCESS (response 含 id)'
     } elseif ($result -match '重复|已存在|exist|already') {
         Write-Output ("  -> already exists, skip: {0}" -f $zip.Name)
+        Write-Log 'result: already exists, skipped'
     } else {
         Write-Error ("  -> upload failed: {0}" -f $preview)
+        Write-Log 'result: FAILED'
         exit 1
     }
 }
