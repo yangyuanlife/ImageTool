@@ -96,9 +96,15 @@ Write-Output ("Gitee: upload url = {0}" -f ($uploadUrl -replace [regex]::Escape(
 
 foreach ($zip in $zips) {
     Write-Output ("Gitee: uploading {0} ({1:N1} MB) ..." -f $zip.Name, ($zip.Length / 1MB))
-    $raw = & curl.exe -sS -# --max-time 600 -X POST $uploadUrl -F "access_token=$token" -F "file=@$($zip.FullName)" 2>&1
+    Write-Output "  -> 进度条（#）会实时显示；若长时间不动说明连接卡住，最多 600s 超时后报错"
+    $respFile = [System.IO.Path]::GetTempFileName()
+    # 关键修复：进度条（-# 写 stderr）必须实时输出到控制台，绝不能捕获进变量（会缓冲，导致「卡住没动静」）。
+    # 响应体用 -o 存临时文件，结束后再读取做成功/失败判断。access_token 按 Gitee 文档放 query。
+    $upUrl = $uploadUrl + '?access_token=' + $token
+    & curl.exe -sS -# --connect-timeout 30 --max-time 600 -X POST $upUrl -F "file=@$($zip.FullName)" -o $respFile
     $curlExit = $LASTEXITCODE
-    $result = $raw | Out-String
+    $result = [System.IO.File]::ReadAllText($respFile, $utf8NoBom)
+    Remove-Item $respFile -Force -ErrorAction SilentlyContinue
     $preview = $result.Trim()
     if ($preview.Length -gt 400) { $preview = $preview.Substring(0, 400) }
     Write-Output ("  -> curl exit={0}，HTTP 响应: {1}" -f $curlExit, $preview)
