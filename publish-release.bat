@@ -71,10 +71,12 @@ echo [2/3] 自包含单文件发布 (%RID%) ...
 dotnet publish -c Release -r %RID% --self-contained true ^
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true ^
     -p:DebugType=none -p:EnableCompressionInBuild=true ^
-    -o "%BUILD%"
+    -o "%BUILD%" > "%OUT%\publish-%RID%.log" 2>&1
 if errorlevel 1 (
-    echo   [警告] %RID% 自包含发布失败（可能缺少 ARM64 目标包），跳过此变体。
-    echo   如需支持 ARM64，请运行: dotnet workload install windows-desktop-arm64
+    echo   [警告] %RID% 自包含发布失败，已跳过此变体。
+    echo   详细错误已写入日志: %OUT%\publish-%RID%.log
+    echo   失败输出（末尾 20 行）:
+    powershell -NoProfile -Command "Get-Content '%OUT%\publish-%RID%.log' -Tail 20"
     goto :skip_arm64
 )
 
