@@ -131,10 +131,10 @@ echo ---- 当前 Release notes 内容 ----
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0show-notes.ps1"
 echo --------------------------------
 
-:: 询问是否修改（10 秒倒计时，超时默认不需要修改）
-choice /c YN /t 10 /d N /m "release notes 如上，是否需要修改【Y】修改，【N】不需要"
-if errorlevel 2 goto :skip_notes_edit
-if errorlevel 1 goto :edit_notes
+:: 询问是否修改（10 秒可见倒计时，超时默认不需要修改）
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0ask-notes.ps1"
+if errorlevel 1 goto :skip_notes_edit
+:edit_notes
 
 :edit_notes
 echo.
