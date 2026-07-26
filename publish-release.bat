@@ -131,22 +131,22 @@ echo ---- 当前 Release notes 内容 ----
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0show-notes.ps1"
 echo --------------------------------
 
-:: 询问是否修改（10 秒无操作默认不需要）
-choice /c YN /t 10 /d N /m "是否需要修改 Release notes？(Y=修改 / N=不改，10秒后默认不改)"
+:: 询问是否修改（10 秒倒计时，超时默认不需要修改）
+choice /c YN /t 10 /d N /m "release notes 如上，是否需要修改【Y】修改，【N】不需要"
 if errorlevel 2 goto :skip_notes_edit
 if errorlevel 1 goto :edit_notes
 
 :edit_notes
 echo.
-echo   请用记事本修改以下文件：
+echo   请修改以下目录下的 release notes.txt：
 echo   %NOTES_PATH%
-echo   修改完毕后输入 Y 继续发布。
+echo   【Y】修改完成后输入 Y 继续发布
 start /wait notepad "%NOTES_PATH%"
 set "MODIFY_OK="
 :wait_confirm
 set /p MODIFY_OK=   修改完毕？输入 Y 继续发布: 
 if /i "%MODIFY_OK%"=="Y" goto :skip_notes_edit
-echo   未收到 Y，重新打开文件 ...
+echo   未收到 Y，请先修改文件...
 start /wait notepad "%NOTES_PATH%"
 goto :wait_confirm
 
