@@ -2,7 +2,7 @@
 bin/
 obj/
 [Dd]ebug/
-[Rr]elease/
+Release/**
 publish/
 
 # Visual Studio / Rider

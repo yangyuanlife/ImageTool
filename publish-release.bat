@@ -125,15 +125,15 @@ echo ============================================================
 echo   生成 Release notes: %NOTES_PATH%
 echo ============================================================
 set "NOTES_DIR=%OUT%"
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gen-release-notes.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0ps\gen-release-notes.ps1"
 
 echo.
 echo ---- 当前 Release notes 内容 ----
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0show-notes.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0ps\show-notes.ps1"
 echo --------------------------------
 
 :: 询问是否修改（10 秒可见倒计时，超时默认不需要修改）
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0ask-notes.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0ps\ask-notes.ps1"
 if errorlevel 1 goto :skip_notes_edit
 :edit_notes
 
@@ -159,7 +159,7 @@ echo   使用当前 Release notes 继续发布 ...
 :: ========================================================================
 echo.
 echo === 选择发布平台 ===
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0select-platform.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0ps\select-platform.ps1"
 set PLATFORM=ALL
 if exist "%TEMP%\imagetool_platform.txt" (
     set /p PLATFORM=<"%TEMP%\imagetool_platform.txt"
@@ -199,14 +199,14 @@ if "%HAS_GH%"=="1" (
         gh release create "v%VERSION%" %ZIPS% --title "v%VERSION%" --notes-file "%NOTES_PATH%"
     )
     echo   清理 GitHub 旧版单文件附件（如有）...
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0clean-github-stale.ps1"
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0ps\clean-github-stale.ps1"
 ) else if defined GITHUB_TOKEN (
     echo   gh 未安装，回退到 GITHUB_TOKEN（PowerShell API） ...
     set "GH_REPO=yangyuanlife/ImageTool"
     set "GH_TAG=v%VERSION%"
     set "NOTES_PATH=%NOTES_PATH%"
     set "RELEASE_DIR=%OUT%"
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0upload-github-token.ps1"
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0ps\upload-github-token.ps1"
 ) else (
     echo   [跳过] gh 未安装且未设置 GITHUB_TOKEN，跳过 GitHub Release 上传。
     echo   手动上传: GitHub 仓库 Releases -> v%VERSION% -> 把 %OUT%\ 下的 zip 拖进去即可。
@@ -227,7 +227,7 @@ if defined GITEE_TOKEN (
     echo   检测到 GITEE_TOKEN，调用 upload-gitee.ps1 上传 ...
     set "RELEASE_DIR=%OUT%"
     set "NOTES_PATH=%NOTES_PATH%"
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0upload-gitee.ps1"
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0ps\upload-gitee.ps1"
     if errorlevel 1 ( echo   [警告] Gitee 上传失败（见上方错误）。GitHub 产物不受影响。 )
 ) else (
     echo   [跳过] 未设置 GITEE_TOKEN，跳过 Gitee Release 上传。
