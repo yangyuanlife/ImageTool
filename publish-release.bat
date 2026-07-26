@@ -42,7 +42,7 @@ set FOLDER=ImageTool-%VERSION%-%RID%-self-contained
 
 echo.
 echo [1/3] 自包含单文件发布 (%RID%) ...
-dotnet publish -c Release -r %RID% --self-contained true ^
+dotnet publish ImageTool.csproj -c Release -r %RID% --self-contained true ^
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true ^
     -p:DebugType=none -p:EnableCompressionInBuild=true ^
     -o "%BUILD%"
@@ -68,7 +68,7 @@ set FOLDER=ImageTool-%VERSION%-%RID%-self-contained
 
 echo.
 echo [2/3] 自包含单文件发布 (%RID%) ...
-dotnet publish -c Release -r %RID% --self-contained true ^
+dotnet publish ImageTool.csproj -c Release -r %RID% --self-contained true ^
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true ^
     -p:DebugType=none -p:EnableCompressionInBuild=true ^
     -o "%BUILD%"
@@ -99,7 +99,7 @@ set FOLDER=ImageTool-%VERSION%-%RID%-framework-dependent
 
 echo.
 echo [3/3] 框架依赖发布 (%RID%，需 .NET 10 运行时) ...
-dotnet publish -c Release -r %RID% --self-contained false ^
+dotnet publish ImageTool.csproj -c Release -r %RID% --self-contained false ^
     -p:DebugType=none ^
     -o "%BUILD%"
 if errorlevel 1 ( echo [失败] %RID% 框架依赖发布失败 & exit /b 1 )
