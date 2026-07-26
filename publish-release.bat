@@ -135,22 +135,21 @@ if "%HAS_GH%"=="1" (
     echo   gh CLI 已安装，优先用 gh 发布 ...
     gh release view "v%VERSION%" >nul 2>nul
     if not errorlevel 1 (
-        echo   v%VERSION% 已存在，覆盖上传附件 (--clobber) ...
+        echo   v%VERSION% 已存在，覆盖上传附件（--clobber） ...
         gh release upload "v%VERSION%" %ZIPS% --clobber
     ) else (
         echo   创建 v%VERSION% 并上传附件 ...
-        gh release create "v%VERSION%" %ZIPS% ^
-            --title "v%VERSION%" ^
-            --notes "ImageTool %VERSION%
-下载说明：
-- win-x64-self-contained.zip — 推荐，单文件双击即跑，无需装 .NET
-- win-arm64-self-contained.zip — ARM Windows（如 Surface Pro X）
-- win-x64-framework-dependent.zip — 需装 .NET 10 运行时，体积小约 80%"
+        echo ImageTool %VERSION% > "%TEMP%\it_notes_%VERSION%.txt"
+        echo 下载说明： >> "%TEMP%\it_notes_%VERSION%.txt"
+        echo - win-x64-self-contained.zip — 推荐，单文件双击即跑，无需装 .NET >> "%TEMP%\it_notes_%VERSION%.txt"
+        echo - win-arm64-self-contained.zip — ARM Windows（如 Surface Pro X） >> "%TEMP%\it_notes_%VERSION%.txt"
+        echo - win-x64-framework-dependent.zip — 需装 .NET 10 运行时，体积小约 80%% >> "%TEMP%\it_notes_%VERSION%.txt"
+        gh release create "v%VERSION%" %ZIPS% --title "v%VERSION%" --notes-file "%TEMP%\it_notes_%VERSION%.txt"
     )
     echo   清理 GitHub 旧版单文件附件（如有）...
     powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0clean-github-stale.ps1"
 ) else if defined GITHUB_TOKEN (
-    echo   gh 未安装，回退到 GITHUB_TOKEN (PowerShell API) ...
+    echo   gh 未安装，回退到 GITHUB_TOKEN（PowerShell API） ...
     set "GH_REPO=yangyuanlife/ImageTool"
     set "GH_TAG=v%VERSION%"
     set "PS=%TEMP%\it_upload_%VERSION%.ps1"
