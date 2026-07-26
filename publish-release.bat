@@ -1,39 +1,39 @@
-ï»¿@echo off
+?@echo off
 chcp 65001 >nul
 :: ============================================================================
-::  ImageTool ä¸€é”®å‘å¸ƒè„šæœ¬
-::  åŠŸèƒ½: 1) å¤šç›®æ ‡å‘å¸ƒï¼ˆè‡ªåŒ…å«å•æ–‡ä»¶ + æ¡†æ¶ä¾èµ–ï¼‰ 2) æ‰“åŒ…åˆ° publish/ ç›®å½•
-::        3) GitHub Releaseï¼šä¼˜å…ˆ gh CLIï¼Œæœªè£… gh åˆ™å›é€€ GITHUB_TOKEN + PowerShell APIï¼ˆä¸Šä¼ åè‡ªåŠ¨æ¸…ç†æ—§ç‰ˆå•æ–‡ä»¶é™„ä»¶ï¼‰
-::        4) Gitee  Releaseï¼šè®¾äº† GITEE_TOKEN åˆ™è°ƒ upload-gitee.ps1ï¼ˆOpenAPIï¼‰
-::  ç”¨æ³•: åŒå‡»è¿è¡Œï¼ˆéœ€å…ˆ `gh auth login` ä¸€æ¬¡ï¼‰ï¼Œæˆ–
+::  ImageTool Ò»¼ü·¢²¼½Å±¾
+::  ¹¦ÄÜ: 1) ¶àÄ¿±ê·¢²¼£¨×Ô°üº¬µ¥ÎÄ¼ş + ¿ò¼ÜÒÀÀµ£© 2) ´ò°üµ½ publish/ Ä¿Â¼
+::        3) GitHub Release£ºÓÅÏÈ gh CLI£¬Î´×° gh Ôò»ØÍË GITHUB_TOKEN + PowerShell API£¨ÉÏ´«ºó×Ô¶¯ÇåÀí¾É°æµ¥ÎÄ¼ş¸½¼ş£©
+::        4) Gitee  Release£ºÉèÁË GITEE_TOKEN Ôòµ÷ upload-gitee.ps1£¨OpenAPI£©
+::  ÓÃ·¨: Ë«»÷ÔËĞĞ£¨ĞèÏÈ `gh auth login` Ò»´Î£©£¬»ò
 ::        set GITHUB_TOKEN=xxx && set GITEE_TOKEN=yyy && publish-release.bat
-::  è¯´æ˜: æ¨èè£… gh CLIï¼ˆwinget install --id GitHub.cliï¼‰ï¼Œ`gh auth login` æµè§ˆå™¨æˆæƒå
-::        GitHub å‘å¸ƒå…¨è‡ªåŠ¨ã€æ— éœ€æ‰‹å¡« tokenï¼Œä¸” --clobber å¯è‡ªåŠ¨è¦†ç›–åŒåé™„ä»¶ã€‚
-::        æ— å¯¹åº” token æ—¶è¯¥å¹³å°è·³è¿‡ï¼Œä½†ä»ä¼šç”Ÿæˆ zipï¼Œå¯æ‰‹åŠ¨åˆ°å¯¹åº” Releases æ‹–å…¥ã€‚
-::        Gitee ç§äººä»¤ç‰Œ: Gitee è®¾ç½® -> ç§äººä»¤ç‰Œï¼Œå‹¾ projects æƒé™ã€‚
-::  ç¼–ç : æœ¬æ–‡ä»¶ä¸º UTF-8 å¸¦ BOMï¼›é…åˆä¸Šæ–¹ chcp 65001ï¼Œä¸­æ–‡æç¤ºå¯æ­£å¸¸æ˜¾ç¤ºä¸ä¹±ç ã€‚
+::  ËµÃ÷: ÍÆ¼ö×° gh CLI£¨winget install --id GitHub.cli£©£¬`gh auth login` ä¯ÀÀÆ÷ÊÚÈ¨ºó
+::        GitHub ·¢²¼È«×Ô¶¯¡¢ÎŞĞèÊÖÌî token£¬ÇÒ --clobber ¿É×Ô¶¯¸²¸ÇÍ¬Ãû¸½¼ş¡£
+::        ÎŞ¶ÔÓ¦ token Ê±¸ÃÆ½Ì¨Ìø¹ı£¬µ«ÈÔ»áÉú³É zip£¬¿ÉÊÖ¶¯µ½¶ÔÓ¦ Releases ÍÏÈë¡£
+::        Gitee Ë½ÈËÁîÅÆ: Gitee ÉèÖÃ -> Ë½ÈËÁîÅÆ£¬¹´ projects È¨ÏŞ¡£
+::  ±àÂë: ±¾ÎÄ¼şÎª UTF-8 ´ø BOM£»ÅäºÏÉÏ·½ chcp 65001£¬ÖĞÎÄÌáÊ¾¿ÉÕı³£ÏÔÊ¾²»ÂÒÂë¡£
 :: ============================================================================
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
-:: ---- è¯»å–ç‰ˆæœ¬å· (ä» ImageTool.csproj çš„ <Version>) ----
+:: ---- ¶ÁÈ¡°æ±¾ºÅ (´Ó ImageTool.csproj µÄ <Version>) ----
 for /f %%v in ('powershell -NoProfile -Command "(Select-Xml -Path ImageTool.csproj -XPath //Version).Node.InnerText"') do set VERSION=%%v
 if "%VERSION%"=="" (
-    echo [é”™è¯¯] æ— æ³•ä» ImageTool.csproj è¯»å– ^<Version^>
+    echo [´íÎó] ÎŞ·¨´Ó ImageTool.csproj ¶ÁÈ¡ ^<Version^>
     exit /b 1
 )
 
-:: ---- è¾“å‡ºç›®å½• ----
+:: ---- Êä³öÄ¿Â¼ ----
 set OUT=publish
 if not exist "%OUT%" mkdir "%OUT%"
 
 echo ============================================================
-echo   ImageTool å‘å¸ƒå·¥å…·  v%VERSION%
-echo   äº§å‡ºç›®å½•: %OUT%\
+echo   ImageTool ·¢²¼¹¤¾ß  v%VERSION%
+echo   ²ú³öÄ¿Â¼: %OUT%\
 echo ============================================================
 
 :: ========================================================================
-:: å˜ä½“ 1: win-x64 è‡ªåŒ…å«å•æ–‡ä»¶ï¼ˆä¸»åŠ›ç‰ˆæœ¬ï¼‰
+:: ±äÌå 1: win-x64 ×Ô°üº¬µ¥ÎÄ¼ş£¨Ö÷Á¦°æ±¾£©
 :: ========================================================================
 set RID=win-x64
 set BUILD=bin\publish\%RID%-self-contained
@@ -41,14 +41,14 @@ set ZIP=%OUT%\ImageTool-%VERSION%-%RID%-self-contained.zip
 set FOLDER=ImageTool-%VERSION%-%RID%-self-contained
 
 echo.
-echo [1/3] è‡ªåŒ…å«å•æ–‡ä»¶å‘å¸ƒ (%RID%) ...
-dotnet publish -c Release -r %RID% --self-contained true ^
+echo [1/3] ×Ô°üº¬µ¥ÎÄ¼ş·¢²¼ (%RID%) ...
+dotnet publish ImageTool.csproj -c Release -r %RID% --self-contained true ^
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true ^
     -p:DebugType=none -p:EnableCompressionInBuild=true ^
     -o "%BUILD%"
-if errorlevel 1 ( echo [å¤±è´¥] %RID% è‡ªåŒ…å«å‘å¸ƒå¤±è´¥ & exit /b 1 )
+if errorlevel 1 ( echo [Ê§°Ü] %RID% ×Ô°üº¬·¢²¼Ê§°Ü & exit /b 1 )
 
-echo   æ‰“åŒ… %ZIP% ...
+echo   ´ò°ü %ZIP% ...
 if exist "%FOLDER%" rmdir /s /q "%FOLDER%"
 if exist "%ZIP%" del /q "%ZIP%"
 mkdir "%FOLDER%"
@@ -56,10 +56,10 @@ xcopy /e /i /q "%BUILD%" "%FOLDER%" >nul
 powershell -NoProfile -Command "Compress-Archive -Path '%FOLDER%' -DestinationPath '%ZIP%' -Force"
 rmdir /s /q "%FOLDER%"
 rmdir /s /q "%BUILD%"
-echo   å®Œæˆ: %ZIP%
+echo   Íê³É: %ZIP%
 
 :: ========================================================================
-:: å˜ä½“ 2: win-arm64 è‡ªåŒ…å«å•æ–‡ä»¶
+:: ±äÌå 2: win-arm64 ×Ô°üº¬µ¥ÎÄ¼ş
 :: ========================================================================
 set RID=win-arm64
 set BUILD=bin\publish\%RID%-self-contained
@@ -67,20 +67,20 @@ set ZIP=%OUT%\ImageTool-%VERSION%-%RID%-self-contained.zip
 set FOLDER=ImageTool-%VERSION%-%RID%-self-contained
 
 echo.
-echo [2/3] è‡ªåŒ…å«å•æ–‡ä»¶å‘å¸ƒ (%RID%) ...
-dotnet publish -c Release -r %RID% --self-contained true ^
+echo [2/3] ×Ô°üº¬µ¥ÎÄ¼ş·¢²¼ (%RID%) ...
+dotnet publish ImageTool.csproj -c Release -r %RID% --self-contained true ^
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true ^
     -p:DebugType=none -p:EnableCompressionInBuild=true ^
     -o "%BUILD%" > "%OUT%\publish-%RID%.log" 2>&1
 if errorlevel 1 (
-    echo   [è­¦å‘Š] %RID% è‡ªåŒ…å«å‘å¸ƒå¤±è´¥ï¼Œå·²è·³è¿‡æ­¤å˜ä½“ã€‚
-    echo   è¯¦ç»†é”™è¯¯å·²å†™å…¥æ—¥å¿—: %OUT%\publish-%RID%.log
-    echo   å¤±è´¥è¾“å‡ºï¼ˆæœ«å°¾ 20 è¡Œï¼‰:
+    echo   [¾¯¸æ] %RID% ×Ô°üº¬·¢²¼Ê§°Ü£¬ÒÑÌø¹ı´Ë±äÌå¡£
+    echo   ÏêÏ¸´íÎóÒÑĞ´ÈëÈÕÖ¾: %OUT%\publish-%RID%.log
+    echo   Ê§°ÜÊä³ö£¨Ä©Î² 20 ĞĞ£©:
     powershell -NoProfile -Command "Get-Content '%OUT%\publish-%RID%.log' -Tail 20"
     goto :skip_arm64
 )
 
-echo   æ‰“åŒ… %ZIP% ...
+echo   ´ò°ü %ZIP% ...
 if exist "%FOLDER%" rmdir /s /q "%FOLDER%"
 if exist "%ZIP%" del /q "%ZIP%"
 mkdir "%FOLDER%"
@@ -88,11 +88,11 @@ xcopy /e /i /q "%BUILD%" "%FOLDER%" >nul
 powershell -NoProfile -Command "Compress-Archive -Path '%FOLDER%' -DestinationPath '%ZIP%' -Force"
 rmdir /s /q "%FOLDER%"
 rmdir /s /q "%BUILD%"
-echo   å®Œæˆ: %ZIP%
+echo   Íê³É: %ZIP%
 :skip_arm64
 
 :: ========================================================================
-:: å˜ä½“ 3: win-x64 æ¡†æ¶ä¾èµ–ï¼ˆéœ€ .NET 10 è¿è¡Œæ—¶ï¼‰
+:: ±äÌå 3: win-x64 ¿ò¼ÜÒÀÀµ£¨Ğè .NET 10 ÔËĞĞÊ±£©
 :: ========================================================================
 set RID=win-x64
 set BUILD=bin\publish\%RID%-framework-dependent
@@ -100,13 +100,13 @@ set ZIP=%OUT%\ImageTool-%VERSION%-%RID%-framework-dependent.zip
 set FOLDER=ImageTool-%VERSION%-%RID%-framework-dependent
 
 echo.
-echo [3/3] æ¡†æ¶ä¾èµ–å‘å¸ƒ (%RID%ï¼Œéœ€ .NET 10 è¿è¡Œæ—¶) ...
-dotnet publish -c Release -r %RID% --self-contained false ^
+echo [3/3] ¿ò¼ÜÒÀÀµ·¢²¼ (%RID%£¬Ğè .NET 10 ÔËĞĞÊ±) ...
+dotnet publish ImageTool.csproj -c Release -r %RID% --self-contained false ^
     -p:DebugType=none ^
     -o "%BUILD%"
-if errorlevel 1 ( echo [å¤±è´¥] %RID% æ¡†æ¶ä¾èµ–å‘å¸ƒå¤±è´¥ & exit /b 1 )
+if errorlevel 1 ( echo [Ê§°Ü] %RID% ¿ò¼ÜÒÀÀµ·¢²¼Ê§°Ü & exit /b 1 )
 
-echo   æ‰“åŒ… %ZIP% ...
+echo   ´ò°ü %ZIP% ...
 if exist "%FOLDER%" rmdir /s /q "%FOLDER%"
 if exist "%ZIP%" del /q "%ZIP%"
 mkdir "%FOLDER%"
@@ -114,19 +114,19 @@ xcopy /e /i /q "%BUILD%" "%FOLDER%" >nul
 powershell -NoProfile -Command "Compress-Archive -Path '%FOLDER%' -DestinationPath '%ZIP%' -Force"
 rmdir /s /q "%FOLDER%"
 rmdir /s /q "%BUILD%"
-echo   å®Œæˆ: %ZIP%
+echo   Íê³É: %ZIP%
 
 :: ========================================================================
-:: ä¸Šä¼ åˆ° GitHub Release
+:: ÉÏ´«µ½ GitHub Release
 :: ========================================================================
 echo.
-echo === ä¸Šä¼ åˆ° GitHub Release ===
+echo === ÉÏ´«µ½ GitHub Release ===
 
-:: æ”¶é›†æ‰€æœ‰æˆåŠŸç”Ÿæˆçš„ zip
+:: ÊÕ¼¯ËùÓĞ³É¹¦Éú³ÉµÄ zip
 set ZIPS=
 for %%f in ("%OUT%\ImageTool-%VERSION%-*.zip") do if exist "%%f" set ZIPS=!ZIPS! "%%f"
 if "%ZIPS%"=="" (
-    echo   [é”™è¯¯] æ²¡æœ‰ç”Ÿæˆä»»ä½• zipï¼Œè·³è¿‡ä¸Šä¼ ã€‚
+    echo   [´íÎó] Ã»ÓĞÉú³ÉÈÎºÎ zip£¬Ìø¹ıÉÏ´«¡£
     goto :done
 )
 
@@ -134,25 +134,25 @@ set HAS_GH=0
 where gh >nul 2>nul && set HAS_GH=1
 
 if "%HAS_GH%"=="1" (
-    echo   gh CLI å·²å®‰è£…ï¼Œä¼˜å…ˆç”¨ gh å‘å¸ƒ ...
+    echo   gh CLI ÒÑ°²×°£¬ÓÅÏÈÓÃ gh ·¢²¼ ...
     gh release view "v%VERSION%" >nul 2>nul
     if not errorlevel 1 (
-        echo   v%VERSION% å·²å­˜åœ¨ï¼Œè¦†ç›–ä¸Šä¼ é™„ä»¶ (--clobber) ...
+        echo   v%VERSION% ÒÑ´æÔÚ£¬¸²¸ÇÉÏ´«¸½¼ş (--clobber) ...
         gh release upload "v%VERSION%" %ZIPS% --clobber
     ) else (
-        echo   åˆ›å»º v%VERSION% å¹¶ä¸Šä¼ é™„ä»¶ ...
+        echo   ´´½¨ v%VERSION% ²¢ÉÏ´«¸½¼ş ...
         gh release create "v%VERSION%" %ZIPS% ^
             --title "v%VERSION%" ^
             --notes "ImageTool %VERSION%
-ä¸‹è½½è¯´æ˜ï¼š
-- win-x64-self-contained.zip â€” æ¨èï¼Œå•æ–‡ä»¶åŒå‡»å³è·‘ï¼Œæ— éœ€è£… .NET
-- win-arm64-self-contained.zip â€” ARM Windowsï¼ˆå¦‚ Surface Pro Xï¼‰
-- win-x64-framework-dependent.zip â€” éœ€è£… .NET 10 è¿è¡Œæ—¶ï¼Œä½“ç§¯å°çº¦ 80%"
+ÏÂÔØËµÃ÷£º
+- win-x64-self-contained.zip ¡ª ÍÆ¼ö£¬µ¥ÎÄ¼şË«»÷¼´ÅÜ£¬ÎŞĞè×° .NET
+- win-arm64-self-contained.zip ¡ª ARM Windows£¨Èç Surface Pro X£©
+- win-x64-framework-dependent.zip ¡ª Ğè×° .NET 10 ÔËĞĞÊ±£¬Ìå»ıĞ¡Ô¼ 80%"
     )
-    echo   æ¸…ç† GitHub æ—§ç‰ˆå•æ–‡ä»¶é™„ä»¶ï¼ˆå¦‚æœ‰ï¼‰...
+    echo   ÇåÀí GitHub ¾É°æµ¥ÎÄ¼ş¸½¼ş£¨ÈçÓĞ£©...
     powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0clean-github-stale.ps1"
 ) else if defined GITHUB_TOKEN (
-    echo   gh æœªå®‰è£…ï¼Œå›é€€åˆ° GITHUB_TOKEN (PowerShell API) ...
+    echo   gh Î´°²×°£¬»ØÍËµ½ GITHUB_TOKEN (PowerShell API) ...
     set "GH_REPO=yangyuanlife/ImageTool"
     set "GH_TAG=v%VERSION%"
     set "PS=%TEMP%\it_upload_%VERSION%.ps1"
@@ -177,30 +177,30 @@ if "%HAS_GH%"=="1" (
     powershell -NoProfile -ExecutionPolicy Bypass -File "%PS%"
     if exist "%PS%" del /q "%PS%"
 ) else (
-    echo   [è·³è¿‡] gh æœªå®‰è£…ä¸”æœªè®¾ç½® GITHUB_TOKENï¼Œè·³è¿‡ GitHub Release ä¸Šä¼ ã€‚
-    echo   æ‰‹åŠ¨ä¸Šä¼ : GitHub ä»“åº“ Releases -> v%VERSION% -> æŠŠ %OUT%\ ä¸‹çš„ zip æ‹–è¿›å»å³å¯ã€‚
+    echo   [Ìø¹ı] gh Î´°²×°ÇÒÎ´ÉèÖÃ GITHUB_TOKEN£¬Ìø¹ı GitHub Release ÉÏ´«¡£
+    echo   ÊÖ¶¯ÉÏ´«: GitHub ²Ö¿â Releases -> v%VERSION% -> °Ñ %OUT%\ ÏÂµÄ zip ÍÏ½øÈ¥¼´¿É¡£
 )
 
 :: ========================================================================
-:: ä¸Šä¼ åˆ° Gitee Releaseï¼ˆä¸ GitHub å¹³è¡Œï¼›gh ç®¡ä¸äº† Giteeï¼Œåªèƒ½èµ° OpenAPIï¼‰
-:: éœ€è®¾ç½®ç¯å¢ƒå˜é‡ GITEE_TOKENï¼ˆGitee ç§äººä»¤ç‰Œï¼Œå‹¾ projects æƒé™ï¼‰
+:: ÉÏ´«µ½ Gitee Release£¨Óë GitHub Æ½ĞĞ£»gh ¹Ü²»ÁË Gitee£¬Ö»ÄÜ×ß OpenAPI£©
+:: ĞèÉèÖÃ»·¾³±äÁ¿ GITEE_TOKEN£¨Gitee Ë½ÈËÁîÅÆ£¬¹´ projects È¨ÏŞ£©
 :: ========================================================================
 echo.
-echo === ä¸Šä¼ åˆ° Gitee Release ===
+echo === ÉÏ´«µ½ Gitee Release ===
 if defined GITEE_TOKEN (
-    echo   æ£€æµ‹åˆ° GITEE_TOKENï¼Œè°ƒç”¨ upload-gitee.ps1 ä¸Šä¼  ...
+    echo   ¼ì²âµ½ GITEE_TOKEN£¬µ÷ÓÃ upload-gitee.ps1 ÉÏ´« ...
     powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0upload-gitee.ps1"
-    if errorlevel 1 ( echo   [è­¦å‘Š] Gitee ä¸Šä¼ å¤±è´¥ï¼ˆè§ä¸Šæ–¹é”™è¯¯ï¼‰ã€‚GitHub äº§ç‰©ä¸å—å½±å“ã€‚ )
+    if errorlevel 1 ( echo   [¾¯¸æ] Gitee ÉÏ´«Ê§°Ü£¨¼ûÉÏ·½´íÎó£©¡£GitHub ²úÎï²»ÊÜÓ°Ïì¡£ )
 ) else (
-    echo   [è·³è¿‡] æœªè®¾ç½® GITEE_TOKENï¼Œè·³è¿‡ Gitee Release ä¸Šä¼ ã€‚
-    echo   å¦‚éœ€ Gitee è‡ªåŠ¨å‘ç‰ˆ: åœ¨ Gitee è®¾ç½® -> ç§äººä»¤ç‰Œ ç”Ÿæˆï¼ˆå‹¾ projectsï¼‰ï¼Œ
-    echo   ç„¶å set GITEE_TOKEN=xxx åå†è¿è¡Œæœ¬è„šæœ¬ã€‚
+    echo   [Ìø¹ı] Î´ÉèÖÃ GITEE_TOKEN£¬Ìø¹ı Gitee Release ÉÏ´«¡£
+    echo   ÈçĞè Gitee ×Ô¶¯·¢°æ: ÔÚ Gitee ÉèÖÃ -> Ë½ÈËÁîÅÆ Éú³É£¨¹´ projects£©£¬
+    echo   È»ºó set GITEE_TOKEN=xxx ºóÔÙÔËĞĞ±¾½Å±¾¡£
 )
 
 :done
 echo.
 echo ============================================================
-echo   å…¨éƒ¨å®Œæˆã€‚äº§ç‰©:
+echo   È«²¿Íê³É¡£²úÎï:
 dir /b "%OUT%\ImageTool-%VERSION%-*.zip" 2>nul
 echo ============================================================
 endlocal
