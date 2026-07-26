@@ -152,27 +152,7 @@ if "%HAS_GH%"=="1" (
     echo   gh 未安装，回退到 GITHUB_TOKEN（PowerShell API） ...
     set "GH_REPO=yangyuanlife/ImageTool"
     set "GH_TAG=v%VERSION%"
-    set "PS=%TEMP%\it_upload_%VERSION%.ps1"
-    (
-        echo $ErrorActionPreference='Stop'
-        echo $repo=$env:GH_REPO
-        echo $tag=$env:GH_TAG
-        echo $tok=$env:GITHUB_TOKEN
-        echo $base="https://api.github.com/repos/$repo"
-        echo $h=@{Authorization="Bearer $tok"}
-        echo try { $rel=Invoke-RestMethod -Headers $h -Uri "$base/releases/tags/$tag" }
-        echo catch { $body=@{tag_name=$tag; name=$tag; body="ImageTool $tag"; draft=$false; prerelease=$false} ^| ConvertTo-Json; $rel=Invoke-RestMethod -Headers $h -Method Post -Body $body -ContentType 'application/json' -Uri "$base/releases" }
-        echo $h2=$h.Clone(); $h2['Content-Type']='application/zip'
-        echo $dir=Resolve-Path "publish"
-        echo Get-ChildItem "$dir\ImageTool-$($env:VERSION)-*.zip" ^| ForEach-Object {
-        echo     $url=$rel.upload_url.Replace('{?name,label}','?name='+$_.Name)
-        echo     Write-Output "Uploading $($_.Name) ..."
-        echo     Invoke-RestMethod -Headers $h2 -Method Post -InFile $_.FullName -Uri $url
-        echo }
-        echo Write-Output "OK: all assets uploaded to $tag"
-    ) > "%PS%"
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%PS%"
-    if exist "%PS%" del /q "%PS%"
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0upload-github-token.ps1"
 ) else (
     echo   [跳过] gh 未安装且未设置 GITHUB_TOKEN，跳过 GitHub Release 上传。
     echo   手动上传: GitHub 仓库 Releases -> v%VERSION% -> 把 %OUT%\ 下的 zip 拖进去即可。
