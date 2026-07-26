@@ -116,11 +116,13 @@ foreach ($zip in $zips) {
     # 关键：必须用数组形式直接调用 curl（& curl @args），绝不能走 Start-Process -ArgumentList ——
     # 后者会把含空格的路径（如 C:\Users\joe jiang\...）重新解析，切出多余参数被 curl 当成非法 URL（报错 Bad hostname）。
     # --speed-limit 1 --speed-time 30：连续 30s 速率<1B/s 即中止 → 心跳还在跳就证明字节在流动（否则早崩了）
-    # --max-time 1800：宽限 30 分钟，慢速但不中断的真实上传能跑完（空转会被上面的限速保护秒杀）
+    # --max-time 5400：宽限 90 分钟/文件。实测本机到 Gitee 链路被限速 ~34KB/s，62MB 需 ~30 分钟才发完，
+    #            旧 1800s 会在「刚发完等服务器回包」瞬间被掐断（UPLOAD_SIZE 已满但 EXITCODE=28）。放大到 5400 让慢链跑完。
+    #            （真·空转仍会被上面的 --speed-limit 30s 秒杀，放大上限不掩盖故障）
     # --http1.1：强制 HTTP/1.1，绕开 curl+Schannel 在 HTTP/2 下上传大文件时「连接建好但 0 字节发出、最终 timeout」的死锁
-    #            （实测：小 GET 正常、大 POST 卡死 = 典型 HTTP/2+Schannel 上传 stall；降 1.1 后正常流式发送）
+    #            （实测：小 GET 正常、大 POST 卡死 = 典型 HTTP/2+Schannel 上传 stall；降 1.1 后正常流式发送，UPLOAD_SIZE 满）
     # -w：结束记录实际上传量/速率/耗时，写日志便于判断是否网络本身慢
-    $curlArgs = @('-s', '-S', '--connect-timeout', '30', '--max-time', '1800',
+    $curlArgs = @('-s', '-S', '--connect-timeout', '30', '--max-time', '5400',
                    '--speed-limit', '1', '--speed-time', '30', '--http1.1',
                    '-X', 'POST', $uploadUrl,
                    '-F', "access_token=$token",
