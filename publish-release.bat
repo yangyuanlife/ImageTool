@@ -1,33 +1,39 @@
-@echo off
+﻿@echo off
 chcp 65001 >nul
 :: ============================================================================
-::  ImageTool one-click release script
-::  Builds self-contained + framework-dependent packages, zips into publish/,
-::  then uploads to GitHub (gh CLI preferred, GITHUB_TOKEN fallback) and Gitee.
-::  Usage: double-click (run `gh auth login` once), or
-::         set GITHUB_TOKEN=xxx & set GITEE_TOKEN=yyy & publish-release.bat
+::  ImageTool 一键发布脚本
+::  功能: 1) 多目标发布（自包含单文件 + 框架依赖） 2) 打包到 publish/ 目录
+::        3) GitHub Release：优先 gh CLI，未装 gh 则回退 GITHUB_TOKEN + PowerShell API（上传后自动清理旧版单文件附件）
+::        4) Gitee  Release：设了 GITEE_TOKEN 则调 upload-gitee.ps1（OpenAPI）
+::  用法: 双击运行（需先 `gh auth login` 一次），或
+::        set GITHUB_TOKEN=xxx && set GITEE_TOKEN=yyy && publish-release.bat
+::  说明: 推荐装 gh CLI（winget install --id GitHub.cli），`gh auth login` 浏览器授权后
+::        GitHub 发布全自动、无需手填 token，且 --clobber 可自动覆盖同名附件。
+::        无对应 token 时该平台跳过，但仍会生成 zip，可手动到对应 Releases 拖入。
+::        Gitee 私人令牌: Gitee 设置 -> 私人令牌，勾 projects 权限。
+::  编码: 本文件为 UTF-8 带 BOM；配合上方 chcp 65001，中文提示可正常显示不乱码。
 :: ============================================================================
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
-:: ---- Read version from ImageTool.csproj <Version> ----
+:: ---- 读取版本号 (从 ImageTool.csproj 的 <Version>) ----
 for /f %%v in ('powershell -NoProfile -Command "(Select-Xml -Path ImageTool.csproj -XPath //Version).Node.InnerText"') do set VERSION=%%v
 if "%VERSION%"=="" (
-    echo [ERROR] Cannot read ^<Version^> from ImageTool.csproj
+    echo [错误] 无法从 ImageTool.csproj 读取 ^<Version^>
     exit /b 1
 )
 
-:: ---- Output directory ----
+:: ---- 输出目录 ----
 set OUT=publish
 if not exist "%OUT%" mkdir "%OUT%"
 
 echo ============================================================
-echo   ImageTool Release Tool  v%VERSION%
-echo   Output dir: %OUT%\
+echo   ImageTool 发布工具  v%VERSION%
+echo   产出目录: %OUT%\
 echo ============================================================
 
 :: ========================================================================
-:: Variant 1: win-x64 self-contained single file (main release)
+:: 变体 1: win-x64 自包含单文件（主力版本）
 :: ========================================================================
 set RID=win-x64
 set BUILD=bin\publish\%RID%-self-contained
@@ -35,14 +41,14 @@ set ZIP=%OUT%\ImageTool-%VERSION%-%RID%-self-contained.zip
 set FOLDER=ImageTool-%VERSION%-%RID%-self-contained
 
 echo.
-echo [1/3] Self-contained single file (%RID%) ...
+echo [1/3] 自包含单文件发布 (%RID%) ...
 dotnet publish -c Release -r %RID% --self-contained true ^
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true ^
     -p:DebugType=none -p:EnableCompressionInBuild=true ^
     -o "%BUILD%"
-if errorlevel 1 ( echo [FAIL] %RID% self-contained publish failed & exit /b 1 )
+if errorlevel 1 ( echo [失败] %RID% 自包含发布失败 & exit /b 1 )
 
-echo    Zipping %ZIP% ...
+echo   打包 %ZIP% ...
 if exist "%FOLDER%" rmdir /s /q "%FOLDER%"
 if exist "%ZIP%" del /q "%ZIP%"
 mkdir "%FOLDER%"
@@ -50,10 +56,10 @@ xcopy /e /i /q "%BUILD%" "%FOLDER%" >nul
 powershell -NoProfile -Command "Compress-Archive -Path '%FOLDER%' -DestinationPath '%ZIP%' -Force"
 rmdir /s /q "%FOLDER%"
 rmdir /s /q "%BUILD%"
-echo    Done: %ZIP%
+echo   完成: %ZIP%
 
 :: ========================================================================
-:: Variant 2: win-arm64 self-contained single file
+:: 变体 2: win-arm64 自包含单文件
 :: ========================================================================
 set RID=win-arm64
 set BUILD=bin\publish\%RID%-self-contained
@@ -61,18 +67,18 @@ set ZIP=%OUT%\ImageTool-%VERSION%-%RID%-self-contained.zip
 set FOLDER=ImageTool-%VERSION%-%RID%-self-contained
 
 echo.
-echo [2/3] Self-contained single file (%RID%) ...
+echo [2/3] 自包含单文件发布 (%RID%) ...
 dotnet publish -c Release -r %RID% --self-contained true ^
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true ^
     -p:DebugType=none -p:EnableCompressionInBuild=true ^
     -o "%BUILD%"
 if errorlevel 1 (
-    echo   [WARN] %RID% self-contained publish failed (ARM64 workload may be missing), skipping.
-    echo   To enable ARM64, run: dotnet workload install windows-desktop-arm64
+    echo   [警告] %RID% 自包含发布失败（可能缺少 ARM64 目标包），跳过此变体。
+    echo   如需支持 ARM64，请运行: dotnet workload install windows-desktop-arm64
     goto :skip_arm64
 )
 
-echo    Zipping %ZIP% ...
+echo   打包 %ZIP% ...
 if exist "%FOLDER%" rmdir /s /q "%FOLDER%"
 if exist "%ZIP%" del /q "%ZIP%"
 mkdir "%FOLDER%"
@@ -80,11 +86,11 @@ xcopy /e /i /q "%BUILD%" "%FOLDER%" >nul
 powershell -NoProfile -Command "Compress-Archive -Path '%FOLDER%' -DestinationPath '%ZIP%' -Force"
 rmdir /s /q "%FOLDER%"
 rmdir /s /q "%BUILD%"
-echo    Done: %ZIP%
+echo   完成: %ZIP%
 :skip_arm64
 
 :: ========================================================================
-:: Variant 3: win-x64 framework-dependent (needs .NET 10 runtime)
+:: 变体 3: win-x64 框架依赖（需 .NET 10 运行时）
 :: ========================================================================
 set RID=win-x64
 set BUILD=bin\publish\%RID%-framework-dependent
@@ -92,13 +98,13 @@ set ZIP=%OUT%\ImageTool-%VERSION%-%RID%-framework-dependent.zip
 set FOLDER=ImageTool-%VERSION%-%RID%-framework-dependent
 
 echo.
-echo [3/3] Framework-dependent (%RID%, requires .NET 10 runtime) ...
+echo [3/3] 框架依赖发布 (%RID%，需 .NET 10 运行时) ...
 dotnet publish -c Release -r %RID% --self-contained false ^
     -p:DebugType=none ^
     -o "%BUILD%"
-if errorlevel 1 ( echo [FAIL] %RID% framework-dependent publish failed & exit /b 1 )
+if errorlevel 1 ( echo [失败] %RID% 框架依赖发布失败 & exit /b 1 )
 
-echo    Zipping %ZIP% ...
+echo   打包 %ZIP% ...
 if exist "%FOLDER%" rmdir /s /q "%FOLDER%"
 if exist "%ZIP%" del /q "%ZIP%"
 mkdir "%FOLDER%"
@@ -106,19 +112,19 @@ xcopy /e /i /q "%BUILD%" "%FOLDER%" >nul
 powershell -NoProfile -Command "Compress-Archive -Path '%FOLDER%' -DestinationPath '%ZIP%' -Force"
 rmdir /s /q "%FOLDER%"
 rmdir /s /q "%BUILD%"
-echo    Done: %ZIP%
+echo   完成: %ZIP%
 
 :: ========================================================================
-:: Upload to GitHub Release
+:: 上传到 GitHub Release
 :: ========================================================================
 echo.
-echo === Uploading to GitHub Release ===
+echo === 上传到 GitHub Release ===
 
-:: Collect all successfully built zips
+:: 收集所有成功生成的 zip
 set ZIPS=
 for %%f in ("%OUT%\ImageTool-%VERSION%-*.zip") do if exist "%%f" set ZIPS=!ZIPS! "%%f"
 if "%ZIPS%"=="" (
-    echo   [ERROR] No zip was generated, skipping upload.
+    echo   [错误] 没有生成任何 zip，跳过上传。
     goto :done
 )
 
@@ -126,19 +132,25 @@ set HAS_GH=0
 where gh >nul 2>nul && set HAS_GH=1
 
 if "%HAS_GH%"=="1" (
-    echo   gh CLI detected, publishing via gh ...
+    echo   gh CLI 已安装，优先用 gh 发布 ...
     gh release view "v%VERSION%" >nul 2>nul
     if not errorlevel 1 (
-        echo   v%VERSION% exists, uploading assets with --clobber ...
+        echo   v%VERSION% 已存在，覆盖上传附件 (--clobber) ...
         gh release upload "v%VERSION%" %ZIPS% --clobber
     ) else (
-        echo   Creating v%VERSION% and uploading assets ...
-        gh release create "v%VERSION%" %ZIPS% --title "v%VERSION%" --notes "ImageTool %VERSION% - win-x64-self-contained (recommended, no .NET needed), win-arm64-self-contained (ARM Windows), win-x64-framework-dependent (needs .NET 10 runtime, ~80% smaller)"
+        echo   创建 v%VERSION% 并上传附件 ...
+        gh release create "v%VERSION%" %ZIPS% ^
+            --title "v%VERSION%" ^
+            --notes "ImageTool %VERSION%
+下载说明：
+- win-x64-self-contained.zip — 推荐，单文件双击即跑，无需装 .NET
+- win-arm64-self-contained.zip — ARM Windows（如 Surface Pro X）
+- win-x64-framework-dependent.zip — 需装 .NET 10 运行时，体积小约 80%"
     )
-    echo   Cleaning up stale GitHub assets (if any)...
+    echo   清理 GitHub 旧版单文件附件（如有）...
     powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0clean-github-stale.ps1"
 ) else if defined GITHUB_TOKEN (
-    echo   gh not installed, falling back to GITHUB_TOKEN (PowerShell API) ...
+    echo   gh 未安装，回退到 GITHUB_TOKEN (PowerShell API) ...
     set "GH_REPO=yangyuanlife/ImageTool"
     set "GH_TAG=v%VERSION%"
     set "PS=%TEMP%\it_upload_%VERSION%.ps1"
@@ -163,30 +175,30 @@ if "%HAS_GH%"=="1" (
     powershell -NoProfile -ExecutionPolicy Bypass -File "%PS%"
     if exist "%PS%" del /q "%PS%"
 ) else (
-    echo   [SKIP] gh not installed and GITHUB_TOKEN not set, skipping GitHub upload.
-    echo   Manual: GitHub repo Releases -^> v%VERSION% -^> drag zips from %OUT%\ into it.
+    echo   [跳过] gh 未安装且未设置 GITHUB_TOKEN，跳过 GitHub Release 上传。
+    echo   手动上传: GitHub 仓库 Releases -> v%VERSION% -> 把 %OUT%\ 下的 zip 拖进去即可。
 )
 
 :: ========================================================================
-:: Upload to Gitee Release (parallel to GitHub; gh cannot do Gitee)
-:: Requires env var GITEE_TOKEN (Gitee private token with projects scope)
+:: 上传到 Gitee Release（与 GitHub 平行；gh 管不了 Gitee，只能走 OpenAPI）
+:: 需设置环境变量 GITEE_TOKEN（Gitee 私人令牌，勾 projects 权限）
 :: ========================================================================
 echo.
-echo === Uploading to Gitee Release ===
+echo === 上传到 Gitee Release ===
 if defined GITEE_TOKEN (
-    echo   GITEE_TOKEN detected, calling upload-gitee.ps1 ...
+    echo   检测到 GITEE_TOKEN，调用 upload-gitee.ps1 上传 ...
     powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0upload-gitee.ps1"
-    if errorlevel 1 ( echo   [WARN] Gitee upload failed (see error above). GitHub artifacts are unaffected. )
+    if errorlevel 1 ( echo   [警告] Gitee 上传失败（见上方错误）。GitHub 产物不受影响。 )
 ) else (
-    echo   [SKIP] GITEE_TOKEN not set, skipping Gitee upload.
-    echo   To enable: generate a Gitee private token (scope projects), then
-    echo   set GITEE_TOKEN=xxx  and run this script again.
+    echo   [跳过] 未设置 GITEE_TOKEN，跳过 Gitee Release 上传。
+    echo   如需 Gitee 自动发版: 在 Gitee 设置 -> 私人令牌 生成（勾 projects），
+    echo   然后 set GITEE_TOKEN=xxx 后再运行本脚本。
 )
 
 :done
 echo.
 echo ============================================================
-echo   All done. Artifacts:
+echo   全部完成。产物:
 dir /b "%OUT%\ImageTool-%VERSION%-*.zip" 2>nul
 echo ============================================================
 endlocal
