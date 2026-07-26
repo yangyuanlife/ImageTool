@@ -113,6 +113,8 @@ foreach ($zip in $zips) {
     $respFile = [System.IO.Path]::GetTempFileName()
     $errFile  = [System.IO.Path]::GetTempFileName()
     # access_token 作为表单字段（贴合 Gitee 文档，亦为之前采用的形式）
+    # 关键：必须用数组形式直接调用 curl（& curl @args），绝不能走 Start-Process -ArgumentList ——
+    # 后者会把含空格的路径（如 C:\Users\joe jiang\...）重新解析，切出多余参数被 curl 当成非法 URL（报错 Bad hostname）。
     $curlArgs = @('-s', '-S', '--connect-timeout', '30', '--max-time', '600',
                    '-X', 'POST', $uploadUrl,
                    '-F', "access_token=$token",
@@ -123,18 +125,25 @@ foreach ($zip in $zips) {
     $t0 = Get-Date
     $curlExit = $null
     try {
-        # Start-Process 可轮询心跳 + 捕获 stderr（写日志）；若环境异常则回退直接调用
-        $proc = Start-Process -FilePath $curl.Path -ArgumentList $curlArgs -NoNewWindow -PassThru -RedirectStandardError $errFile
+        # 后台作业跑 curl（作业内同样是数组形式调用，argv 不会被破坏）；前台轮询打印心跳。
+        # 若环境不支持 Start-Job，则回退为前台直接调用（功能不受影响，仅无心跳）。
+        $job = Start-Job -ScriptBlock {
+            param($cp, $ca, $ef, $rf)
+            & $cp @ca 2>> $ef
+            "EXITCODE=$LASTEXITCODE"
+        } -ArgumentList $curl.Path, $curlArgs, $errFile, $respFile
         $elapsed = 0
-        while (-not $proc.HasExited) {
+        while ($job.State -eq 'Running') {
             Start-Sleep -Seconds 10
             $elapsed += 10
             Write-Log ('... 上传进行中（已 {0}s，请勿关闭窗口）' -f $elapsed)
             Write-Output ('  -> 上传进行中（已 {0}s，请勿关闭窗口）' -f $elapsed)
         }
-        $curlExit = $proc.ExitCode
+        $jobOut = Receive-Job $job
+        Remove-Job $job -Force
+        if ($jobOut -match 'EXITCODE=(\d+)') { $curlExit = [int]$Matches[1] } else { $curlExit = -1 }
     } catch {
-        Write-Log ('Start-Process 失败，回退直接调用：{0}' -f $_.Exception.Message)
+        Write-Log ('Start-Job 不可用，回退前台直接调用：{0}' -f $_.Exception.Message)
         & $curl.Path @curlArgs 2>> $errFile
         $curlExit = $LASTEXITCODE
     }
