@@ -2,7 +2,7 @@
 chcp 936 >nul
 :: ============================================================================
 ::  ImageTool 一键发布脚本
-::  功能: 1) 多目标发布（自包含单文件 + 框架依赖） 2) 打包到 publish/ 目录
+::  功能: 1) 多目标发布（自包含单文件 + 框架依赖） 2) 打包到 Release\v<版本>\ 目录
 ::        3) GitHub Release：优先 gh CLI，未装 gh 则回退 GITHUB_TOKEN + PowerShell API（上传后自动清理旧版单文件附件）
 ::        4) Gitee  Release：设了 GITEE_TOKEN 则调 upload-gitee.ps1（OpenAPI）
 ::  用法: 双击运行（需先 `gh auth login` 一次），或
@@ -12,6 +12,7 @@ chcp 936 >nul
 ::        无对应 token 时该平台跳过，但仍会生成 zip，可手动到对应 Releases 拖入。
 ::        Gitee 私人令牌: Gitee 设置 -> 私人令牌，勾 projects 权限。
 ::  编码: 本文件为 GBK(cp936) 无 BOM；配合上方 chcp 936，中文提示可正常显示不乱码。
+::  产物: Release\v<版本>\ 下含所有 zip 与 release notes.txt
 :: ============================================================================
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
@@ -23,8 +24,8 @@ if "%VERSION%"=="" (
     exit /b 1
 )
 
-:: ---- 输出目录 ----
-set OUT=publish
+:: ---- 输出目录: Release/v<version>/ ----
+set OUT=Release\v%VERSION%
 if not exist "%OUT%" mkdir "%OUT%"
 
 echo ============================================================
@@ -115,6 +116,44 @@ rmdir /s /q "%BUILD%"
 echo   完成: %ZIP%
 
 :: ========================================================================
+:: 生成 Release notes 并询问是否修改
+:: ========================================================================
+set NOTES_PATH=%OUT%\release notes.txt
+echo.
+echo ============================================================
+echo   生成 Release notes: %NOTES_PATH%
+echo ============================================================
+set "NOTES_DIR=%OUT%"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gen-release-notes.ps1"
+
+echo.
+echo ---- 当前 Release notes 内容 ----
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0show-notes.ps1"
+echo --------------------------------
+
+:: 询问是否修改（10 秒无操作默认不需要）
+choice /c YN /t 10 /d N /m "是否需要修改 Release notes？(Y=修改 / N=不改，10秒后默认不改)"
+if errorlevel 2 goto :skip_notes_edit
+if errorlevel 1 goto :edit_notes
+
+:edit_notes
+echo.
+echo   请用记事本修改以下文件：
+echo   %NOTES_PATH%
+echo   修改完毕后输入 Y 继续发布。
+start /wait notepad "%NOTES_PATH%"
+set "MODIFY_OK="
+:wait_confirm
+set /p MODIFY_OK=   修改完毕？输入 Y 继续发布: 
+if /i "%MODIFY_OK%"=="Y" goto :skip_notes_edit
+echo   未收到 Y，重新打开文件 ...
+start /wait notepad "%NOTES_PATH%"
+goto :wait_confirm
+
+:skip_notes_edit
+echo   使用当前 Release notes 继续发布 ...
+
+:: ========================================================================
 :: 上传到 GitHub Release
 :: ========================================================================
 echo.
@@ -135,16 +174,12 @@ if "%HAS_GH%"=="1" (
     echo   gh CLI 已安装，优先用 gh 发布 ...
     gh release view "v%VERSION%" >nul 2>nul
     if not errorlevel 1 (
-        echo   v%VERSION% 已存在，覆盖上传附件（--clobber） ...
+        echo   v%VERSION% 已存在，更新说明并更新附件（--clobber） ...
+        gh release edit "v%VERSION%" --notes-file "%NOTES_PATH%"
         gh release upload "v%VERSION%" %ZIPS% --clobber
     ) else (
         echo   创建 v%VERSION% 并上传附件 ...
-        echo ImageTool %VERSION% > "%TEMP%\it_notes_%VERSION%.txt"
-        echo 下载说明： >> "%TEMP%\it_notes_%VERSION%.txt"
-        echo - win-x64-self-contained.zip — 推荐，单文件双击即跑，无需装 .NET >> "%TEMP%\it_notes_%VERSION%.txt"
-        echo - win-arm64-self-contained.zip — ARM Windows（如 Surface Pro X） >> "%TEMP%\it_notes_%VERSION%.txt"
-        echo - win-x64-framework-dependent.zip — 需装 .NET 10 运行时，体积小约 80%% >> "%TEMP%\it_notes_%VERSION%.txt"
-        gh release create "v%VERSION%" %ZIPS% --title "v%VERSION%" --notes-file "%TEMP%\it_notes_%VERSION%.txt"
+        gh release create "v%VERSION%" %ZIPS% --title "v%VERSION%" --notes-file "%NOTES_PATH%"
     )
     echo   清理 GitHub 旧版单文件附件（如有）...
     powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0clean-github-stale.ps1"
@@ -152,6 +187,8 @@ if "%HAS_GH%"=="1" (
     echo   gh 未安装，回退到 GITHUB_TOKEN（PowerShell API） ...
     set "GH_REPO=yangyuanlife/ImageTool"
     set "GH_TAG=v%VERSION%"
+    set "NOTES_PATH=%NOTES_PATH%"
+    set "RELEASE_DIR=%OUT%"
     powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0upload-github-token.ps1"
 ) else (
     echo   [跳过] gh 未安装且未设置 GITHUB_TOKEN，跳过 GitHub Release 上传。
@@ -166,6 +203,8 @@ echo.
 echo === 上传到 Gitee Release ===
 if defined GITEE_TOKEN (
     echo   检测到 GITEE_TOKEN，调用 upload-gitee.ps1 上传 ...
+    set "RELEASE_DIR=%OUT%"
+    set "NOTES_PATH=%NOTES_PATH%"
     powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0upload-gitee.ps1"
     if errorlevel 1 ( echo   [警告] Gitee 上传失败（见上方错误）。GitHub 产物不受影响。 )
 ) else (
@@ -177,7 +216,8 @@ if defined GITEE_TOKEN (
 :done
 echo.
 echo ============================================================
-echo   全部完成。产物:
+echo   全部完成。产物位于:
+echo   %OUT%\
 dir /b "%OUT%\ImageTool-%VERSION%-*.zip" 2>nul
 echo ============================================================
 endlocal
