@@ -5,6 +5,7 @@ chcp 936 >nul
 ::  功能: 1) 多目标发布（自包含单文件 + 框架依赖） 2) 打包到 Release\v<版本>\ 目录
 ::        3) GitHub Release：优先 gh CLI，未装 gh 则回退 GITHUB_TOKEN + PowerShell API（上传后自动清理旧版单文件附件）
 ::        4) Gitee  Release：设了 GITEE_TOKEN 则调 upload-gitee.ps1（OpenAPI）
+::        5) 发布前交互选择平台 1:GitHub 2:Gitee 3:全部（10 秒可见倒计时，超时默认全部）
 ::  用法: 双击运行（需先 `gh auth login` 一次），或
 ::        set GITHUB_TOKEN=xxx && set GITEE_TOKEN=yyy && publish-release.bat
 ::  说明: 推荐装 gh CLI（winget install --id GitHub.cli），`gh auth login` 浏览器授权后
@@ -154,10 +155,26 @@ goto :wait_confirm
 echo   使用当前 Release notes 继续发布 ...
 
 :: ========================================================================
+:: 选择发布平台（10 秒可见倒计时，超时默认全部）
+:: ========================================================================
+echo.
+echo === 选择发布平台 ===
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0select-platform.ps1"
+set PLATFORM=ALL
+if exist "%TEMP%\imagetool_platform.txt" (
+    set /p PLATFORM=<"%TEMP%\imagetool_platform.txt"
+)
+echo   本次发布平台: %PLATFORM%
+
+:: ========================================================================
 :: 上传到 GitHub Release
 :: ========================================================================
 echo.
 echo === 上传到 GitHub Release ===
+if "%PLATFORM%"=="GITEE" (
+    echo   [跳过] 按选择仅发布 Gitee，跳过 GitHub 上传。
+    goto :after_github
+)
 
 :: 收集所有成功生成的 zip
 set ZIPS=
@@ -194,6 +211,7 @@ if "%HAS_GH%"=="1" (
     echo   [跳过] gh 未安装且未设置 GITHUB_TOKEN，跳过 GitHub Release 上传。
     echo   手动上传: GitHub 仓库 Releases -> v%VERSION% -> 把 %OUT%\ 下的 zip 拖进去即可。
 )
+:after_github
 
 :: ========================================================================
 :: 上传到 Gitee Release（与 GitHub 平行；gh 管不了 Gitee，只能走 OpenAPI）
@@ -201,6 +219,10 @@ if "%HAS_GH%"=="1" (
 :: ========================================================================
 echo.
 echo === 上传到 Gitee Release ===
+if "%PLATFORM%"=="GITHUB" (
+    echo   [跳过] 按选择仅发布 GitHub，跳过 Gitee 上传。
+    goto :after_gitee
+)
 if defined GITEE_TOKEN (
     echo   检测到 GITEE_TOKEN，调用 upload-gitee.ps1 上传 ...
     set "RELEASE_DIR=%OUT%"
@@ -212,6 +234,7 @@ if defined GITEE_TOKEN (
     echo   如需 Gitee 自动发版: 在 Gitee 设置 -> 私人令牌 生成（勾 projects），
     echo   然后 set GITEE_TOKEN=xxx 后再运行本脚本。
 )
+:after_gitee
 
 :done
 echo.
