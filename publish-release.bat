@@ -2,12 +2,14 @@
 :: ============================================================================
 ::  ImageTool 一键发布脚本
 ::  功能: 1) 多目标发布（自包含单文件 + 框架依赖） 2) 打包到 publish/ 目录
-::        3) 优先用 gh CLI 发布到 GitHub Release；未安装 gh 时若设了 GITHUB_TOKEN
-::           则回退 PowerShell API
-::  用法: 双击运行（需先 `gh auth login` 一次），或  set GITHUB_TOKEN=xxx && publish-release.bat
+::        3) GitHub Release：优先 gh CLI，未装 gh 则回退 GITHUB_TOKEN + PowerShell API
+::        4) Gitee  Release：设了 GITEE_TOKEN 则调 upload-gitee.ps1（OpenAPI）
+::  用法: 双击运行（需先 `gh auth login` 一次），或
+::        set GITHUB_TOKEN=xxx && set GITEE_TOKEN=yyy && publish-release.bat
 ::  说明: 推荐装 gh CLI（winget install --id GitHub.cli），`gh auth login` 浏览器授权后
-::        发布全自动、无需手填 token，且 --clobber 可自动覆盖同名附件。无 gh 且无 token 时跳过第3步，
-::        但仍会生成 zip，可手动到 GitHub Releases 拖入。
+::        GitHub 发布全自动、无需手填 token，且 --clobber 可自动覆盖同名附件。
+::        无对应 token 时该平台跳过，但仍会生成 zip，可手动到对应 Releases 拖入。
+::        Gitee 私人令牌: Gitee 设置 -> 私人令牌，勾 projects 权限。
 :: ============================================================================
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
@@ -173,8 +175,24 @@ where gh >nul 2>nul (
     powershell -NoProfile -ExecutionPolicy Bypass -File "%PS%"
     if exist "%PS%" del /q "%PS%"
 ) else (
-    echo   [SKIP] 未安装 gh 且未设置 GITHUB_TOKEN，跳过 Release 上传。
+    echo   [SKIP] 未安装 gh 且未设置 GITHUB_TOKEN，跳过 GitHub Release 上传。
     echo   手动上传: GitHub 仓库 Releases -^> v%VERSION% -^> 把 %OUT%\ 下的 zip 拖进去即可。
+)
+
+:: ========================================================================
+:: 上传到 Gitee Release（与 GitHub 平行；gh 管不了 Gitee，只能走 OpenAPI）
+:: 需设置环境变量 GITEE_TOKEN（Gitee 私人令牌，勾 projects 权限）
+:: ========================================================================
+echo.
+echo === 上传到 Gitee Release ===
+if defined GITEE_TOKEN (
+    echo   检测到 GITEE_TOKEN，调用 upload-gitee.ps1 上传 ...
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0upload-gitee.ps1"
+    if errorlevel 1 ( echo   [WARN] Gitee 上传失败（见上方错误）。GitHub 产物不受影响。 )
+) else (
+    echo   [SKIP] 未设置 GITEE_TOKEN，跳过 Gitee Release 上传。
+    echo   如需 Gitee 自动发版: 在 Gitee 设置 -^> 私人令牌 生成（勾 projects），
+    echo   然后  set GITEE_TOKEN=xxx  后再运行本脚本。
 )
 
 :done
